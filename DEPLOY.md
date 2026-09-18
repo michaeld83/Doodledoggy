@@ -21,9 +21,9 @@ Fly / Render / Railway free tiers are **not** lasting for SQLite+uploads without
 
 1. Open **https://app.turso.tech**
 2. **Sign up** → **Continue with GitHub** → authorize as **`michaeld83`**
-3. **Create Database** → name **`doodle2024!`** → US region → Create
-4. Open the DB → copy **LibSQL URL** (`libsql://doodledoggy-….turso.io`) → save as Notes
-5. **Tokens → Create Token** (full access) → copy token → save as Notes
+3. **Create Database** → name **`doodledoggy`** → US region → Create
+4. Open the DB → copy **LibSQL URL** (`libsql://doodledoggy-….turso.io`) → save in Notes
+5. **Tokens → Create Token** (full access) → copy token → save in Notes
 
 ### 2) Vercel (Hobby free, no card)
 
@@ -37,7 +37,7 @@ Fly / Render / Railway free tiers are **not** lasting for SQLite+uploads without
 | `DATABASE_URL` | `file:./tmp/build.db` |
 | `TURSO_DATABASE_URL` | LibSQL URL from step 1 |
 | `TURSO_AUTH_TOKEN` | Turso token from step 1 |
-| `SESSION_SECRET` | any long random string (e.g. 32+ chars from a password generator) |
+| `SESSION_SECRET` | any long random string (32+ chars from a password generator) |
 | `DOCUSIGN_MODE` | `mock` |
 | `COI_WARN_THRESHOLD` | `6.25` |
 | `COI_COMMON_ANCESTOR_GENS` | `4` |
@@ -69,7 +69,7 @@ Optional full pedigree demo from a laptop with Turso env set: `npm run db:seed`
 
 ## After you finish OAuth
 
-Reply with the Vercel URL (and optionally paste Turso URL/token privately). An agent can re-run seed and verify `/login` returns 200.
+Reply with the Vercel URL (and optionally Turso URL/token privately). An agent can re-run seed and verify `/login` returns 200.
 
 ## Temporary Cloudflare tunnel
 
@@ -79,4 +79,5 @@ A `*.trycloudflare.com` URL may expose the Cursor box for short demos. It dies w
 
 - `vercel.json` — Vercel build
 - `prisma/turso-schema.sql` — applied by `/api/setup/seed`
+- `src/app/api/setup/seed/route.ts` — schema + login bootstrap
 - `fly.toml` / `Dockerfile` / `railway.toml` — paid/volume hosts later
