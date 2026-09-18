@@ -1,0 +1,26 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "file:/app/data/doodledoggy.db"
+      SESSION_SECRET: "${SESSION_SECRET:-change-me-in-production-please}"
+      COI_WARN_THRESHOLD: "${COI_WARN_THRESHOLD:-6.25}"
+      COI_COMMON_ANCESTOR_GENS: "${COI_COMMON_ANCESTOR_GENS:-4}"
+      UPLOAD_DIR: "/app/public/uploads"
+      DOCUSIGN_MODE: "${DOCUSIGN_MODE:-mock}"
+      DOCUSIGN_INTEGRATION_KEY: "${DOCUSIGN_INTEGRATION_KEY:-}"
+      DOCUSIGN_USER_ID: "${DOCUSIGN_USER_ID:-}"
+      DOCUSIGN_ACCOUNT_ID: "${DOCUSIGN_ACCOUNT_ID:-}"
+      DOCUSIGN_AUTH_SERVER: "${DOCUSIGN_AUTH_SERVER:-https://account-d.docusign.com}"
+      DOCUSIGN_PRIVATE_KEY_PATH: "${DOCUSIGN_PRIVATE_KEY_PATH:-}"
+      SEED_ON_START: "${SEED_ON_START:-true}"
+    volumes:
+      - doodledoggy_data:/app/data
+      - doodledoggy_uploads:/app/public/uploads
+    restart: unless-stopped
+
+volumes:
+  doodledoggy_data:
+  doodledoggy_uploads:

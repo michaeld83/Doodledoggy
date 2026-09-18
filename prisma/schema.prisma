@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Dog {
+  id             String    @id @default(cuid())
+  registeredName String
+  callName       String
+  sex            String // MALE | FEMALE
+  breed          String
+  dateOfBirth    DateTime?
+  status         String    @default("ACTIVE") // ACTIVE | RETIRED | DECEASED | SOLD
+  microchip      String?
+  registration   String?
+  photoPath      String?
+  notes          String?
+  motherId       String?
+  fatherId       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  mother   Dog?  @relation("MotherOffspring", fields: [motherId], references: [id], onDelete: SetNull)
+  father   Dog?  @relation("FatherOffspring", fields: [fatherId], references: [id], onDelete: SetNull)
+  childrenAsMother Dog[] @relation("MotherOffspring")
+  childrenAsFather Dog[] @relation("FatherOffspring")
+
+  littersAsDam Litter[] @relation("DamLitters")
+  littersAsSire Litter[] @relation("SireLitters")
+  healthRecords HealthRecord[]
+  puppyLink    Puppy?
+
+  @@index([status])
+  @@index([callName])
+}
+
+model Litter {
+  id         String   @id @default(cuid())
+  name       String?
+  damId      String
+  sireId     String
+  whelpDate  DateTime?
+  expectedDate DateTime?
+  notes      String?
+  status     String   @default("PLANNED") // PLANNED | EXPECTING | BORN | CLOSED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  dam   Dog @relation("DamLitters", fields: [damId], references: [id])
+  sire  Dog @relation("SireLitters", fields: [sireId], references: [id])
+  puppies Puppy[]
+  reservations Reservation[]
+  coiChecks MatingCoiCheck[]
+}
+
+model Puppy {
+  id         String  @id @default(cuid())
+  litterId   String
+  tempName   String
+  sex        String? // MALE | FEMALE
+  color      String?
+  status     String  @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD | KEPT
+  pickPosition Int?
+  dogId      String? @unique // if kept and registered as dog
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  litter Litter @relation(fields: [litterId], references: [id], onDelete: Cascade)
+  dog    Dog?   @relation(fields: [dogId], references: [id], onDelete: SetNull)
+  reservation Reservation?
+}
+
+model Reservation {
+  id            String   @id @default(cuid())
+  litterId      String
+  puppyId       String?  @unique
+  buyerName     String
+  buyerEmail    String?
+  buyerPhone    String?
+  depositAmount Float
+  paymentMethod String?  // CASH | CHECK | VENMO | ZELLE | OTHER
+  paidWhere     String?
+  pickPosition  Int?
+  status        String   @default("OPEN") // OPEN | COMPLETED | CANCELLED | REFUNDED
+  notes         String?
+  docusignEnvelopeId String?
+  docusignStatus     String? // DRAFT | SENT_MOCK | CONFIGURED_PENDING
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  litter Litter @relation(fields: [litterId], references: [id], onDelete: Cascade)
+  puppy  Puppy? @relation(fields: [puppyId], references: [id], onDelete: SetNull)
+}
+
+model HealthRecord {
+  id          String   @id @default(cuid())
+  dogId       String
+  title       String
+  notes       String?
+  recordDate  DateTime @default(now())
+  followUpAt  DateTime?
+  filePath    String?
+  fileName    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dog Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@index([dogId])
+  @@index([followUpAt])
+}
+
+model MatingCoiCheck {
+  id              String   @id @default(cuid())
+  litterId        String?
+  damId           String
+  sireId          String
+  coiPercent      Float
+  generations     Int
+  commonAncestors String // JSON
+  highRelatedness Boolean
+  confirmed       Boolean  @default(false)
+  confirmedBy     String?
+  confirmedAt     DateTime?
+  warningMessage  String?
+  createdAt       DateTime @default(now())
+
+  litter Litter? @relation(fields: [litterId], references: [id], onDelete: SetNull)
+}
+
+model AppSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}

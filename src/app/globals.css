@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #faf7f2;
+  --cream-dark: #f0ebe3;
+  --parchment: #e8e0d4;
+  --gold: #c9a227;
+  --gold-soft: #e8d5a3;
+  --gold-dark: #8b7355;
+  --brown: #5c4a32;
+  --brown-soft: #7a6548;
+  --ink: #3d3226;
+  --muted: #8a7d6b;
+  --success: #5a7d5a;
+  --warn: #b8860b;
+  --danger: #a65d5d;
+  --info: #6b8a9a;
+  --card: #fffdf9;
+  --border: #ddd2c0;
+}
+
+body {
+  color: var(--ink);
+  background: var(--cream);
+  min-height: 100vh;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition shadow-sm;
+  }
+  .btn-primary {
+    @apply btn text-white;
+    background: linear-gradient(180deg, #d4b03a 0%, #c9a227 100%);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.05);
+  }
+  .btn-secondary {
+    @apply btn border bg-white;
+    border-color: var(--border);
+    color: var(--brown);
+  }
+  .btn-secondary:hover {
+    background: var(--cream-dark);
+  }
+  .btn-danger {
+    @apply btn text-white;
+    background: var(--danger);
+  }
+  .btn-ghost {
+    @apply btn shadow-none;
+    color: var(--brown-soft);
+  }
+  .btn-ghost:hover {
+    background: var(--cream-dark);
+  }
+  .card {
+    @apply rounded-xl border p-5 shadow-sm;
+    background: var(--card);
+    border-color: var(--border);
+  }
+  .input {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition;
+    border-color: var(--border);
+    background: white;
+  }
+  .input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.2);
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide;
+    color: var(--brown-soft);
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-success {
+    @apply badge;
+    background: #e5f0e5;
+    color: var(--success);
+  }
+  .badge-warn {
+    @apply badge;
+    background: #faf0d4;
+    color: var(--warn);
+  }
+  .badge-info {
+    @apply badge;
+    background: #e4eef3;
+    color: var(--info);
+  }
+  .badge-neutral {
+    @apply badge;
+    background: var(--cream-dark);
+    color: var(--brown);
+  }
+  .badge-danger {
+    @apply badge;
+    background: #f5e4e4;
+    color: var(--danger);
+  }
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight;
+    color: var(--brown);
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .table-wrap {
+    @apply overflow-x-auto rounded-xl border;
+    border-color: var(--border);
+  }
+  table.data {
+    @apply w-full text-left text-sm;
+  }
+  table.data th {
+    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wide;
+    background: var(--cream-dark);
+    color: var(--brown-soft);
+  }
+  table.data td {
+    @apply border-t px-4 py-3;
+    border-color: var(--border);
+  }
+  table.data tr:hover td {
+    background: rgba(250, 247, 242, 0.8);
+  }
+}
+
+/* Pedigree boxes */
+.ped-node {
+  @apply rounded-lg border px-2 py-1.5 text-center text-xs shadow-sm;
+  background: var(--card);
+  border-color: var(--border);
+  min-width: 7rem;
+}
+.ped-node.male {
+  border-left: 3px solid #6b8a9a;
+}
+.ped-node.female {
+  border-left: 3px solid #c98a9a;
+}
