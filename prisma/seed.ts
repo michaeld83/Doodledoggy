@@ -8,9 +8,14 @@ function createPrismaClient() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createClient } = require("@libsql/client") as typeof import("@libsql/client");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { PrismaLibSQL } = require("@prisma/adapter-libsql") as typeof import("@prisma/adapter-libsql");
+    const libsqlAdapter = require("@prisma/adapter-libsql") as {
+      PrismaLibSql?: new (client: unknown) => unknown;
+      PrismaLibSQL?: new (client: unknown) => unknown;
+    };
+    const Adapter = libsqlAdapter.PrismaLibSql || libsqlAdapter.PrismaLibSQL;
+    if (!Adapter) throw new Error("Turso adapter not available");
     const libsql = createClient({ url: tursoUrl, authToken: tursoToken });
-    return new PrismaClient({ adapter: new PrismaLibSQL(libsql) });
+    return new PrismaClient({ adapter: new Adapter(libsql) as never });
   }
   return new PrismaClient();
 }

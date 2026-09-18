@@ -1,100 +1,82 @@
-# Deploy Doodledoggy (free + durable)
+# Deploy Doodledoggy — free durable public URL
 
-## Recommendation (2026)
+**Goal:** `https://….vercel.app` login page on Safari, with data that survives redeploys.  
+**No Cursor Pro / Azure / credit card.**
 
-| Option | Durable data? | Always free? | Notes |
-|--------|---------------|--------------|-------|
-| **D) Turso + Vercel Hobby + Blob** | Yes | Yes (Hobby + Turso Free + Blob Hobby caps) | Best lasting free path |
-| A) Fly.io + volume | Yes while paid | No — trial ~2 VM hours / 7 days, then card | `fly.toml` ready |
-| B) Render free + disk | No on Free | Free web has **no** persistent disk | SQLite/uploads lost on sleep |
-| C) Railway trial | Yes during trial | Trial $5/30d then Free $1/mo (usually too little for always-on) | `railway.toml` ready |
+Plain SQLite on Vercel serverless does **not** persist. Use:
 
-Docker + SQLite + local uploads still work via `docker compose` / Fly / Railway.
+| Piece | Free product | Role |
+|-------|--------------|------|
+| Host | **Vercel Hobby** | Next.js HTTPS |
+| DB | **Turso Free** | SQLite-compatible, durable |
+| Uploads | **Vercel Blob** (Hobby) | Photos / health files |
+
+Fly / Render / Railway free tiers are **not** lasting for SQLite+uploads without paying (Fly trial ≈ 2 VM-hours; Render free has no persistent disk). Config files remain if you later accept paid volumes.
 
 ---
 
-## Path D — Turso + Vercel (phone-friendly)
+## Phone steps (Safari) — do once
 
-### 1) Turso (free DB, no card)
+### 1) Turso (no card)
 
-1. On phone Safari open **https://app.turso.tech**
-2. Tap **Sign up** → **Continue with GitHub** (use `michaeld83`)
-3. Accept / authorize Turso
-4. Tap **Create Database** → name `doodledoggy` → region near you → Create
-5. Open the DB → **Connect** / tokens:
-   - Copy **URL** (`libsql://…`) → this is `TURSO_DATABASE_URL`
-   - Create token → copy → `TURSO_AUTH_TOKEN`
+1. Open **https://app.turso.tech**
+2. **Sign up** → **Continue with GitHub** → authorize as **`michaeld83`**
+3. **Create Database** → name **`doodle2024!`** → US region → Create
+4. Open the DB → copy **LibSQL URL** (`libsql://doodledoggy-….turso.io`) → save as Notes
+5. **Tokens → Create Token** (full access) → copy token → save as Notes
 
-Apply schema (from a computer with Turso CLI, or ask the agent after login):
+### 2) Vercel (Hobby free, no card)
 
-```bash
-# generate SQL from Prisma schema
-npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/doodledoggy.sql
-turso db shell doodledoggy < /tmp/doodledoggy.sql
-TURSO_DATABASE_URL=… TURSO_AUTH_TOKEN=… npm run db:seed
-```
-
-### 2) Vercel (free Hobby host)
-
-1. Phone Safari: **https://vercel.com/signup**
-2. **Continue with GitHub** → authorize
-3. **Add New… → Project** → Import **`michaeld83/Doodledoggy`**
-4. Environment Variables (Production):
+1. Open **https://vercel.com/signup**
+2. **Continue with GitHub** → authorize **`michaeld83`**
+3. **Add New… → Project** → import **`michaeld83/Doodledoggy`**
+4. Before Deploy, open **Environment Variables** and add (Production + Preview):
 
 | Name | Value |
 |------|--------|
-| `TURSO_DATABASE_URL` | from Turso |
-| `TURSO_AUTH_TOKEN` | from Turso |
-| `SESSION_SECRET` | long random string |
-| `DATABASE_URL` | `file:./placeholder.db` (build-time Prisma only) |
+| `DATABASE_URL` | `file:./tmp/build.db` |
+| `TURSO_DATABASE_URL` | LibSQL URL from step 1 |
+| `TURSO_AUTH_TOKEN` | Turso token from step 1 |
+| `SESSION_SECRET` | any long random string (e.g. 32+ chars from a password generator) |
 | `DOCUSIGN_MODE` | `mock` |
 | `COI_WARN_THRESHOLD` | `6.25` |
 | `COI_COMMON_ANCESTOR_GENS` | `4` |
 
-5. **Storage → Create → Blob** (Hobby free caps) → connect to project → copies `BLOB_READ_WRITE_TOKEN`
-6. Deploy → open the `*.vercel.app` URL → should show login
+5. **Storage → Create → Blob** → connect to this project (adds `BLOB_READ_WRITE_TOKEN`)
+6. **Deploy** → wait until Ready → open the `https://….vercel.app` URL → you should see **Login**
 
-### 3) Logins (seed)
+### 3) Create login users (once)
+
+On any computer (or iOS Shortcuts / Termius):
+
+```bash
+curl -X POST https://YOUR-APP.vercel.app/api/setup/seed \
+  -H "x-setup-secret: YOUR_SESSION_SECRET"
+```
+
+This applies the Turso schema (if empty) and creates the two logins.
+
+### 4) Log in on Safari
 
 | Email | Password |
 |-------|----------|
 | `michael@doodledoggy.local` | `doodle2024!` |
 | `partner@doodledoggy.local` | `doodle2024!` |
 
-Change after first login in production.
+Optional full pedigree demo from a laptop with Turso env set: `npm run db:seed`
 
 ---
 
-## Path C — Railway (trial, Docker as-is)
+## After you finish OAuth
 
-1. Safari: **https://railway.app** → Login with GitHub
-2. **New Project → Deploy from GitHub** → `Doodledoggy`
-3. Settings → add **Volume** mount `/app/data` (0.5 GB on trial/free)
-4. Variables: `SESSION_SECRET`, `SEED_ON_START=true`, `DATABASE_URL=file:/app/data/doodledoggy.db`, `UPLOAD_DIR=/app/public/uploads`
-5. Generate domain → open HTTPS URL
+Reply with the Vercel URL (and optionally paste Turso URL/token privately). An agent can re-run seed and verify `/login` returns 200.
 
-Note: trial volumes may be deleted ~30 days after trial ends unless you upgrade (paid). Not lasting free.
+## Temporary Cloudflare tunnel
 
----
+A `*.trycloudflare.com` URL may expose the Cursor box for short demos. It dies when the box/tunnel stops — **prefer Vercel+Turso**.
 
-## Path A — Fly.io
+## Repo deploy files
 
-1. Safari: **https://fly.io/app/sign-up** → GitHub
-2. On a computer (or agent with token): `fly auth login` then:
-
-```bash
-fly apps create doodledoggy
-fly volumes create doodledoggy_data --size 1 --region ord
-fly secrets set SESSION_SECRET='…' SEED_ON_START=true
-fly deploy
-```
-
-Trial is short; durable use needs a payment method (do not add a card if you want $0).
-
----
-
-## Local Docker (unchanged)
-
-```bash
-docker compose up --build
-```
+- `vercel.json` — Vercel build
+- `prisma/turso-schema.sql` — applied by `/api/setup/seed`
+- `fly.toml` / `Dockerfile` / `railway.toml` — paid/volume hosts later
