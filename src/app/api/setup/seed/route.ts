@@ -27,10 +27,11 @@ async function ensureTursoSchema() {
   const sqlPath = path.join(process.cwd(), "prisma", "turso-schema.sql");
   const sql = await readFile(sqlPath, "utf8");
   // Split on statement boundaries Prisma emits; skip empty / comment-only chunks.
-  const statements = sql
-    .split(/;\s*\n/)
+  const stripped = sql.replace(/^--.*$/gm, "");
+  const statements = stripped
+    .split(";")
     .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith("--"));
+    .filter((s) => s.length > 0);
 
   for (const statement of statements) {
     await client.execute(statement.endsWith(";") ? statement : `${statement};`);
