@@ -9,6 +9,7 @@ const links = [
   { href: "/dogs", label: "Dogs" },
   { href: "/litters", label: "Litters" },
   { href: "/reservations", label: "Reservations" },
+  { href: "/inquiries", label: "Inquiries" },
   { href: "/mating", label: "Mating / COI" },
   { href: "/settings", label: "Settings" },
 ];

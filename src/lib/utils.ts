@@ -23,6 +23,7 @@ export const PUPPY_STATUSES = ["AVAILABLE", "RESERVED", "SOLD", "KEPT"] as const
 export const LITTER_STATUSES = ["PLANNED", "EXPECTING", "BORN", "CLOSED"] as const;
 export const RESERVATION_STATUSES = ["OPEN", "COMPLETED", "CANCELLED", "REFUNDED"] as const;
 export const PAYMENT_METHODS = ["CASH", "CHECK", "VENMO", "ZELLE", "OTHER"] as const;
+export const INQUIRY_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "ARCHIVED"] as const;
 
 export function statusBadgeClass(status: string): string {
   switch (status) {
@@ -30,10 +31,13 @@ export function statusBadgeClass(status: string): string {
     case "AVAILABLE":
     case "OPEN":
     case "BORN":
+    case "QUALIFIED":
       return "badge-success";
     case "RESERVED":
     case "EXPECTING":
     case "PLANNED":
+    case "NEW":
+    case "CONTACTED":
       return "badge-warn";
     case "SOLD":
     case "COMPLETED":
@@ -41,6 +45,7 @@ export function statusBadgeClass(status: string): string {
       return "badge-info";
     case "RETIRED":
     case "KEPT":
+    case "ARCHIVED":
       return "badge-neutral";
     case "DECEASED":
     case "CANCELLED":

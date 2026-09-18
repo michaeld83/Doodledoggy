@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const now = new Date();
-  const [activeDogs, upcomingLitters, openReservations, healthFollowUps] = await Promise.all([
+  const [activeDogs, upcomingLitters, openReservations, healthFollowUps, newInquiryCount] = await Promise.all([
     prisma.dog.findMany({
       where: { status: "ACTIVE" },
       orderBy: { callName: "asc" },
@@ -29,6 +29,7 @@ export default async function DashboardPage() {
       orderBy: { followUpAt: "asc" },
       take: 10,
     }),
+    prisma.inquiry.count({ where: { status: "NEW" } }),
   ]);
 
   const overdue = healthFollowUps.filter((h) => h.followUpAt && h.followUpAt < now);
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="card">
           <div className="text-xs font-semibold uppercase text-[var(--muted)]">Active dogs</div>
           <div className="mt-1 text-3xl font-semibold text-[var(--brown)]">{activeDogs.length}</div>
@@ -69,6 +70,11 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
+        <Link href="/inquiries?status=NEW" className="card block hover:shadow-md transition">
+          <div className="text-xs font-semibold uppercase text-[var(--muted)]">New inquiries</div>
+          <div className="mt-1 text-3xl font-semibold text-[var(--brown)]">{newInquiryCount}</div>
+          <div className="mt-1 text-xs text-[var(--gold-dark)]">View leads →</div>
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

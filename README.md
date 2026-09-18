@@ -13,7 +13,8 @@ Built for exactly **2 users** (no public signup). Soft kennel-friendly UI with d
 - **Deposits / DocuSign stub** — reservations with payment tracking; payload builder + mock path; live send never faked
 - **Health/vet files** — notes + uploads on disk; timeline on dog page
 - **Auth** — simple login; 2 seeded users
-- **Dashboard** — active dogs, upcoming litters, open reservations, health follow-ups
+- **Dashboard** — active dogs, upcoming litters, open reservations, health follow-ups, new inquiries
+- **Inquiries** — webhook-ready contact leads (GoDaddy/form planned); staff list + status
 
 ## Tech
 
@@ -82,6 +83,35 @@ docker compose up --build
 
 See **Settings** in the app for the same checklist.
 
+
+## Website form / GoDaddy (planned)
+
+Website contact forms and GoDaddy lead email are **not connected yet** (no live URL or form inbox). When ready, point the form (or a Zapier/Make bridge) at:
+
+`POST /api/inquiries/webhook`
+
+Header: `X-Webhook-Secret: <INQUIRY_WEBHOOK_SECRET>`
+
+Expected JSON body:
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "404-555-0100",
+  "message": "Interested in a mini golden doodle puppy this spring.",
+  "source": "godaddy_form",
+  "externalId": "optional-idempotency-key-from-form"
+}
+```
+
+- Required: `name`, `email`. Optional: `phone`, `message` (or `body`), `source` (`godaddy_form` | `email` | `manual` | `webhook`), `externalId` / `idempotencyKey` (dedupes retries).
+- Success: `201` with the created inquiry (or `200` if the same `externalId` already exists).
+- Staff manage leads at **Inquiries** (`/inquiries`): filter by status, update status, view raw payload.
+- Future email import: use `mapEmailToInquiry({ from, subject, text, date })` in `src/lib/inquiry.ts` (stub only — no IMAP).
+
+Set `INQUIRY_WEBHOOK_SECRET` in `.env` before enabling the webhook.
+
 ## Logo replacement
 
 Place replaceable assets under `public/branding/`:
@@ -98,3 +128,12 @@ Fictional 3-generation Mini Golden Doodle pedigree (Ace/Belle/Prestige/Pearl/Duk
 ## Out of scope
 
 Native mobile, public customer portal, payment processing, real logo artwork.
+
+## Deploy (free public URL)
+
+See **[DEPLOY.md](./DEPLOY.md)** for Turso + Vercel (recommended lasting free), Railway trial, and Fly.io.
+
+Runtime toggles:
+
+- Set `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` to use Turso instead of local SQLite.
+- Set `BLOB_READ_WRITE_TOKEN` to store uploads on Vercel Blob (needed on serverless).

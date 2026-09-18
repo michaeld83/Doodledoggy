@@ -6,11 +6,26 @@ export function uploadRoot() {
   return path.resolve(process.env.UPLOAD_DIR || "./public/uploads");
 }
 
-export async function saveUpload(file: File, subdir: string): Promise<{ relativePath: string; fileName: string }> {
+export async function saveUpload(
+  file: File,
+  subdir: string
+): Promise<{ relativePath: string; fileName: string }> {
   const bytes = Buffer.from(await file.arrayBuffer());
   const ext = path.extname(file.name) || "";
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
   const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}-${safe || "file"}${ext && !safe.endsWith(ext) ? ext : ""}`;
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+
+  if (blobToken) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`uploads/${subdir}/${fileName}`, bytes, {
+      access: "public",
+      token: blobToken,
+      contentType: file.type || undefined,
+    });
+    return { relativePath: blob.url, fileName: file.name };
+  }
+
   const dir = path.join(uploadRoot(), subdir);
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, fileName), bytes);

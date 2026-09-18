@@ -1,0 +1,40 @@
+# Fly.io — durable SQLite + uploads via volume (requires Fly account; free trial is short, then paid).
+# Prefer Turso+Vercel for lasting free. See DEPLOY.md.
+
+app = "doodledoggy"
+primary_region = "ord"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  HOSTNAME = "0.0.0.0"
+  DATABASE_URL = "file:/app/data/doodledoggy.db"
+  UPLOAD_DIR = "/app/public/uploads"
+  DOCUSIGN_MODE = "mock"
+  SEED_ON_START = "true"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[http_service.checks]]
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "30s"
+  method = "GET"
+  path = "/login"
+
+[[mounts]]
+  source = "doodledoggy_data"
+  destination = "/app/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

@@ -1,11 +1,26 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+function createPrismaClient() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+  if (tursoUrl) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require("@libsql/client") as typeof import("@libsql/client");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaLibSQL } = require("@prisma/adapter-libsql") as typeof import("@prisma/adapter-libsql");
+    const libsql = createClient({ url: tursoUrl, authToken: tursoToken });
+    return new PrismaClient({ adapter: new PrismaLibSQL(libsql) });
+  }
+  return new PrismaClient();
+}
+
+const prisma = createPrismaClient();
 
 async function main() {
   console.log("Seeding Doodledoggy...");
 
+  await prisma.inquiry.deleteMany();
   await prisma.matingCoiCheck.deleteMany();
   await prisma.reservation.deleteMany();
   await prisma.puppy.deleteMany();
@@ -405,10 +420,58 @@ async function main() {
     ],
   });
 
+
+  await prisma.inquiry.createMany({
+    data: [
+      {
+        name: "Jordan Blake",
+        email: "jordan.blake@example.com",
+        phone: "404-555-0142",
+        message: "Hi! Looking for a mini golden doodle puppy for our family this fall. Do you have a waitlist?",
+        source: "godaddy_form",
+        status: "NEW",
+        externalId: "seed-godaddy-001",
+        rawPayload: JSON.stringify({
+          name: "Jordan Blake",
+          email: "jordan.blake@example.com",
+          phone: "404-555-0142",
+          message: "Hi! Looking for a mini golden doodle puppy for our family this fall. Do you have a waitlist?",
+          formId: "contact-us",
+          submittedAt: "2026-09-10T15:22:00Z",
+        }),
+      },
+      {
+        name: "Alex Chen",
+        email: "alex.chen@example.com",
+        phone: null,
+        message: "Subject: Puppy inquiry\n\nSaw your site — interested in a female with a lighter coat. Can you share upcoming litter dates?",
+        source: "email",
+        status: "CONTACTED",
+        externalId: "seed-email-msg-002",
+        rawPayload: JSON.stringify({
+          from: "Alex Chen <alex.chen@example.com>",
+          subject: "Puppy inquiry",
+          text: "Saw your site — interested in a female with a lighter coat. Can you share upcoming litter dates?",
+          date: "2026-09-08T09:10:00Z",
+        }),
+      },
+      {
+        name: "Taylor Morgan",
+        email: "taylor.m@example.com",
+        phone: "678-555-0177",
+        message: "Called about deposits and pick order. Prefers male, hypoallergenic coat.",
+        source: "manual",
+        status: "NEW",
+        externalId: null,
+        rawPayload: null,
+      },
+    ],
+  });
+
   console.log("Seed complete.");
   console.log("Users: michael@doodledoggy.local / partner@doodledoggy.local");
   console.log("Password: doodle2024!");
-  console.log(`Dogs: ${await prisma.dog.count()}, Litters: ${await prisma.litter.count()}`);
+  console.log(`Dogs: ${await prisma.dog.count()}, Litters: ${await prisma.litter.count()}, Inquiries: ${await prisma.inquiry.count()}`);
 }
 
 main()

@@ -1,0 +1,12 @@
+# Railway — Docker + volume for SQLite/uploads.
+# Free trial ($5 / 30 days) then Free ($1/mo) is usually not enough for always-on.
+# Prefer Turso+Vercel for lasting free. See DEPLOY.md.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/login"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
