@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/utils";
+import { BREED_TYPES, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +8,15 @@ export const dynamic = "force-dynamic";
 export default async function DogsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; q?: string };
+  searchParams: { status?: string; q?: string; breed?: string };
 }) {
   const status = searchParams.status;
+  const breed = searchParams.breed;
   const q = searchParams.q?.trim();
   const dogs = await prisma.dog.findMany({
     where: {
       ...(status ? { status } : {}),
+      ...(breed ? { breed } : {}),
       ...(q
         ? {
             OR: [
@@ -46,6 +48,12 @@ export default async function DogsPage({
           <option value="RETIRED">Retired</option>
           <option value="DECEASED">Deceased</option>
           <option value="SOLD">Sold</option>
+        </select>
+        <select name="breed" className="input max-w-[14rem]" defaultValue={breed || ""}>
+          <option value="">All breeds</option>
+          {BREED_TYPES.map((b) => (
+            <option key={b} value={b}>{b}</option>
+          ))}
         </select>
         <button type="submit" className="btn-secondary">Filter</button>
       </form>

@@ -18,12 +18,32 @@ export function toInputDate(d: Date | string | null | undefined): string {
   return format(date, "yyyy-MM-dd");
 }
 
+export const BREED_TYPES = [
+  "Mini Golden Doodle",
+  "Micro Golden Doodle",
+  "Mini Bernedoodle",
+  "Micro Bernedoodle",
+  "Munchkin Bernedoodle",
+] as const;
+
+export type BreedType = (typeof BREED_TYPES)[number];
+
 export const DOG_STATUSES = ["ACTIVE", "RETIRED", "DECEASED", "SOLD"] as const;
 export const PUPPY_STATUSES = ["AVAILABLE", "RESERVED", "SOLD", "KEPT"] as const;
 export const LITTER_STATUSES = ["PLANNED", "EXPECTING", "BORN", "CLOSED"] as const;
 export const RESERVATION_STATUSES = ["OPEN", "COMPLETED", "CANCELLED", "REFUNDED"] as const;
 export const PAYMENT_METHODS = ["CASH", "CHECK", "VENMO", "ZELLE", "OTHER"] as const;
 export const INQUIRY_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "ARCHIVED"] as const;
+export const CONTRACT_STATUSES = ["DRAFT", "SENT", "SIGNED", "CANCELLED"] as const;
+
+export function formatMoney(n: number | null | undefined): string {
+  const v = Number(n) || 0;
+  return `$${v.toFixed(2)}`;
+}
+
+export function customerDisplayName(c: { name: string } | null | undefined, fallback?: string | null) {
+  return c?.name || fallback || "—";
+}
 
 export function statusBadgeClass(status: string): string {
   switch (status) {
@@ -32,12 +52,15 @@ export function statusBadgeClass(status: string): string {
     case "OPEN":
     case "BORN":
     case "QUALIFIED":
+    case "SIGNED":
       return "badge-success";
     case "RESERVED":
     case "EXPECTING":
     case "PLANNED":
     case "NEW":
     case "CONTACTED":
+    case "SENT":
+    case "DRAFT":
       return "badge-warn";
     case "SOLD":
     case "COMPLETED":

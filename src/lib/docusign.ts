@@ -4,6 +4,8 @@
  * and will return a clear "not sent" / configuration-needed response.
  */
 
+import { buildFeeLineItems, type FeeAddOns, type FeeLineItem } from "@/lib/fees";
+
 export type EnvelopePayload = {
   emailSubject: string;
   recipients: {
@@ -22,6 +24,11 @@ export type EnvelopePayload = {
   }[];
   status: "created" | "sent";
   metadata: Record<string, string>;
+  fees?: {
+    lines: FeeLineItem[];
+    total: number;
+    depositAmount: number;
+  };
 };
 
 export type DocuSignConfig = {
@@ -51,22 +58,56 @@ export function isDocuSignConfigured(cfg = getDocuSignConfig()): boolean {
 export function buildReservationEnvelope(input: {
   buyerName: string;
   buyerEmail: string;
+  buyerPhone?: string | null;
   litterLabel: string;
+  breedType?: string | null;
   depositAmount: number;
   pickPosition?: number | null;
   puppyName?: string | null;
+  paymentMethod?: string | null;
+  paidWhere?: string | null;
+  paid?: boolean;
+  addOns?: FeeAddOns;
 }): EnvelopePayload {
+  const addOns = input.addOns || {
+    snugglePuppy: false,
+    snugglePuppyAmount: null,
+    travelBag: false,
+    travelBagAmount: null,
+    travelArrangements: false,
+    travelArrangementsNotes: null,
+    travelArrangementsAmount: null,
+    customFees: [],
+  };
+  const lines = buildFeeLineItems(input.depositAmount, addOns);
+  const total = lines.reduce((s, l) => s + l.amount, 0);
+
+  const feeBlock = lines
+    .map((l) => {
+      const note = l.notes ? ` (${l.notes})` : "";
+      return `  - ${l.label}${note}: $${l.amount.toFixed(2)}`;
+    })
+    .join("\n");
+
   const text = [
-    "Puppy Reservation Agreement — Mini Golden Doodles Georgia",
+    "Puppy Reservation / Paid Client Agreement — Mini Golden Doodles Georgia",
     "",
     `Buyer: ${input.buyerName}`,
     `Email: ${input.buyerEmail}`,
+    `Phone: ${input.buyerPhone || "—"}`,
     `Litter: ${input.litterLabel}`,
+    `Breed type: ${input.breedType || "—"}`,
     `Puppy: ${input.puppyName || "TBD"}`,
     `Pick position: ${input.pickPosition ?? "TBD"}`,
-    `Deposit: $${input.depositAmount.toFixed(2)}`,
+    `Payment method: ${input.paymentMethod || "—"}`,
+    `Paid where: ${input.paidWhere || "—"}`,
+    `Marked paid: ${input.paid ? "Yes" : "No"}`,
     "",
-    "By signing, buyer acknowledges deposit terms and pick order.",
+    "Fee breakdown:",
+    feeBlock,
+    `Total: $${total.toFixed(2)}`,
+    "",
+    "By signing, buyer acknowledges deposit terms, add-on fees, and pick order.",
     "",
     "Signature: ______________________  Date: __________",
   ].join("\n");
@@ -97,6 +138,13 @@ export function buildReservationEnvelope(input: {
     metadata: {
       litter: input.litterLabel,
       deposit: String(input.depositAmount),
+      total: String(total),
+      feeLines: JSON.stringify(lines),
+    },
+    fees: {
+      lines,
+      total,
+      depositAmount: Number(input.depositAmount) || 0,
     },
   };
 }
@@ -133,7 +181,6 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
     };
   }
 
-  // Sandbox/live: document required setup; do not fake a successful live send
   return {
     ok: false,
     mode: cfg.mode,

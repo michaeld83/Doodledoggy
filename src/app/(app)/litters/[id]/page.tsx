@@ -30,6 +30,13 @@ export default async function LitterDetailPage({ params }: { params: { id: strin
         </div>
       </div>
 
+      {litter.breedType && (
+        <div className="card text-sm">
+          <div className="text-xs uppercase text-[var(--muted)]">Breed type</div>
+          <div className="font-medium">{litter.breedType}</div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card">
           <div className="text-xs uppercase text-[var(--muted)]">Dam</div>

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LITTER_STATUSES } from "@/lib/utils";
+import { BREED_TYPES, LITTER_STATUSES } from "@/lib/utils";
 
 type DogOpt = { id: string; callName: string; sex: string };
 
@@ -32,6 +32,7 @@ export function LitterForm({
     const fd = new FormData(form);
     const body = {
       name: fd.get("name"),
+      breedType: fd.get("breedType") || null,
       damId: fd.get("damId"),
       sireId: fd.get("sireId"),
       whelpDate: fd.get("whelpDate") || null,
@@ -73,6 +74,14 @@ export function LitterForm({
         <div className="sm:col-span-2">
           <label className="label">Litter name</label>
           <input name="name" className="input" placeholder="e.g. Honey × Cedar — Summer 2026" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Breed type</label>
+          <select name="breedType" className="input" defaultValue="Mini Golden Doodle">
+            {BREED_TYPES.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="label">Dam</label>

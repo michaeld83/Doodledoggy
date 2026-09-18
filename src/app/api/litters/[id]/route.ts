@@ -14,6 +14,7 @@ export async function PUT(req: Request, { params }: Ctx) {
       name: body.name ?? undefined,
       notes: body.notes ?? undefined,
       status: body.status ?? undefined,
+      breedType: body.breedType !== undefined ? (body.breedType || null) : undefined,
       whelpDate: body.whelpDate !== undefined ? (body.whelpDate ? new Date(body.whelpDate) : null) : undefined,
       expectedDate:
         body.expectedDate !== undefined ? (body.expectedDate ? new Date(body.expectedDate) : null) : undefined,

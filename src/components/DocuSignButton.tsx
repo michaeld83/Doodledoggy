@@ -25,7 +25,7 @@ export function DocuSignButton({ reservationId }: { reservationId: string }) {
   return (
     <div className="space-y-2">
       <button type="button" className="btn-secondary" onClick={send} disabled={loading}>
-        {loading ? "Building envelope…" : "Send DocuSign (mock/sandbox stub)"}
+        {loading ? "Building envelope…" : "Send to DocuSign"}
       </button>
       {msg && <p className="text-sm text-[var(--brown-soft)] whitespace-pre-wrap">{msg}</p>}
     </div>

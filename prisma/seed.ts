@@ -27,7 +27,9 @@ async function main() {
 
   await prisma.inquiry.deleteMany();
   await prisma.matingCoiCheck.deleteMany();
+  await prisma.contract.deleteMany();
   await prisma.reservation.deleteMany();
+  await prisma.customer.deleteMany();
   await prisma.puppy.deleteMany();
   await prisma.litter.deleteMany();
   await prisma.healthRecord.deleteMany();
@@ -157,7 +159,7 @@ async function main() {
       registeredName: "MGGA Maple Sugar F1",
       callName: "Maple",
       sex: "FEMALE",
-      breed: "Mini Golden Doodle F1",
+      breed: "Mini Golden Doodle",
       dateOfBirth: new Date("2019-06-10"),
       status: "ACTIVE",
       microchip: "985112000000001",
@@ -173,7 +175,7 @@ async function main() {
       registeredName: "MGGA Oakridge F1",
       callName: "Oak",
       sex: "MALE",
-      breed: "Mini Golden Doodle F1",
+      breed: "Mini Golden Doodle",
       dateOfBirth: new Date("2019-08-22"),
       status: "ACTIVE",
       microchip: "985112000000002",
@@ -189,7 +191,7 @@ async function main() {
       registeredName: "MGGA Willow Breeze F1",
       callName: "Willow",
       sex: "FEMALE",
-      breed: "Mini Golden Doodle F1",
+      breed: "Mini Golden Doodle",
       dateOfBirth: new Date("2020-03-05"),
       status: "ACTIVE",
       microchip: "985112000000003",
@@ -204,7 +206,7 @@ async function main() {
       registeredName: "MGGA Cedar Twist F1B",
       callName: "Cedar",
       sex: "MALE",
-      breed: "Mini Golden Doodle F1B",
+      breed: "Mini Golden Doodle",
       dateOfBirth: new Date("2020-01-14"),
       status: "ACTIVE",
       microchip: "985112000000004",
@@ -220,7 +222,7 @@ async function main() {
       registeredName: "MGGA Honey Peach F1B",
       callName: "Honey",
       sex: "FEMALE",
-      breed: "Mini Golden Doodle F1B",
+      breed: "Mini Golden Doodle",
       dateOfBirth: new Date("2022-09-18"),
       status: "ACTIVE",
       microchip: "985112000000010",
@@ -235,7 +237,7 @@ async function main() {
       registeredName: "MGGA River Gold F2",
       callName: "River",
       sex: "MALE",
-      breed: "Mini Golden Doodle F2",
+      breed: "Micro Golden Doodle",
       dateOfBirth: new Date("2023-04-02"),
       status: "ACTIVE",
       microchip: "985112000000011",
@@ -249,7 +251,7 @@ async function main() {
       registeredName: "MGGA Luna Cream F1B",
       callName: "Luna",
       sex: "FEMALE",
-      breed: "Mini Golden Doodle F1B",
+      breed: "Mini Golden Doodle",
       dateOfBirth: new Date("2023-11-20"),
       status: "ACTIVE",
       motherId: willow.id,
@@ -261,6 +263,7 @@ async function main() {
   const litter1 = await prisma.litter.create({
     data: {
       name: "Maple x Oak — Fall 2022",
+      breedType: "Mini Golden Doodle",
       damId: maple.id,
       sireId: oak.id,
       whelpDate: new Date("2022-09-18"),
@@ -303,6 +306,7 @@ async function main() {
   const litter2 = await prisma.litter.create({
     data: {
       name: "Willow x River — Spring 2026",
+      breedType: "Mini Golden Doodle",
       damId: willow.id,
       sireId: river.id,
       expectedDate: new Date("2026-05-15"),
@@ -315,6 +319,7 @@ async function main() {
   const litter3 = await prisma.litter.create({
     data: {
       name: "Honey x Cedar — Planned",
+      breedType: "Micro Bernedoodle",
       damId: honey.id,
       sireId: cedar.id,
       expectedDate: new Date("2026-08-01"),
@@ -356,34 +361,90 @@ async function main() {
     }),
   ]);
 
-  await prisma.reservation.create({
+  const jordan = await prisma.customer.create({
+    data: {
+      name: "Jordan Lee",
+      email: "jordan.lee@example.com",
+      phone: "404-555-0142",
+      city: "Atlanta",
+      state: "GA",
+      zip: "30308",
+      address: "Atlanta, GA 30308",
+    },
+  });
+
+  const sam = await prisma.customer.create({
+    data: {
+      name: "Sam Rivera",
+      email: "sam.r@example.com",
+      phone: "770-555-0199",
+      city: "Marietta",
+      state: "GA",
+      zip: "30060",
+    },
+  });
+
+  const resJordan = await prisma.reservation.create({
     data: {
       litterId: litter3.id,
       puppyId: pups[1].id,
+      customerId: jordan.id,
       buyerName: "Jordan Lee",
       buyerEmail: "jordan.lee@example.com",
       buyerPhone: "404-555-0142",
       depositAmount: 500,
       paymentMethod: "VENMO",
       paidWhere: "Kennel Venmo @MGGA",
+      paid: true,
       pickPosition: 2,
       status: "OPEN",
       notes: "Wants apricot male",
+      snugglePuppy: true,
+      snugglePuppyAmount: 75,
+      travelBag: true,
+      travelBagAmount: 50,
+      customFeesJson: JSON.stringify([{ label: "Airport meetup", amount: 100 }]),
+      feesTotal: 725,
+    },
+  });
+
+  await prisma.contract.create({
+    data: {
+      customerId: jordan.id,
+      reservationId: resJordan.id,
+      litterId: litter3.id,
+      title: "Reservation — Jordan Lee — Honey x Cedar",
+      status: "DRAFT",
+      depositAmount: 500,
+      totalAmount: 725,
+      feesJson: JSON.stringify({
+        depositAmount: 500,
+        lines: [
+          { key: "deposit", label: "Deposit", amount: 500 },
+          { key: "snugglePuppy", label: "Snuggle puppy", amount: 75 },
+          { key: "travelBag", label: "Travel bag", amount: 50 },
+          { key: "custom-0", label: "Airport meetup", amount: 100 },
+        ],
+        total: 725,
+      }),
     },
   });
 
   await prisma.reservation.create({
     data: {
       litterId: litter2.id,
+      customerId: sam.id,
       buyerName: "Sam Rivera",
       buyerEmail: "sam.r@example.com",
       buyerPhone: "770-555-0199",
       depositAmount: 400,
       paymentMethod: "ZELLE",
       paidWhere: "Business checking",
+      paid: false,
       pickPosition: 1,
       status: "OPEN",
       notes: "First pick on Willow litter",
+      feesTotal: 400,
     },
   });
 

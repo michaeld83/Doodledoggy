@@ -33,6 +33,7 @@ CREATE TABLE "Dog" (
 CREATE TABLE "Litter" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT,
+    "breedType" TEXT,
     "damId" TEXT NOT NULL,
     "sireId" TEXT NOT NULL,
     "whelpDate" DATETIME,
@@ -63,25 +64,75 @@ CREATE TABLE "Puppy" (
 );
 
 -- CreateTable
+CREATE TABLE "Customer" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT,
+    "address" TEXT,
+    "street" TEXT,
+    "city" TEXT,
+    "state" TEXT,
+    "zip" TEXT,
+    "notes" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "Reservation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "litterId" TEXT NOT NULL,
     "puppyId" TEXT,
-    "buyerName" TEXT NOT NULL,
+    "customerId" TEXT,
+    "buyerName" TEXT,
     "buyerEmail" TEXT,
     "buyerPhone" TEXT,
     "depositAmount" REAL NOT NULL,
     "paymentMethod" TEXT,
     "paidWhere" TEXT,
+    "paid" BOOLEAN NOT NULL DEFAULT false,
     "pickPosition" INTEGER,
     "status" TEXT NOT NULL DEFAULT 'OPEN',
     "notes" TEXT,
+    "snugglePuppy" BOOLEAN NOT NULL DEFAULT false,
+    "snugglePuppyAmount" REAL,
+    "travelBag" BOOLEAN NOT NULL DEFAULT false,
+    "travelBagAmount" REAL,
+    "travelArrangements" BOOLEAN NOT NULL DEFAULT false,
+    "travelArrangementsNotes" TEXT,
+    "travelArrangementsAmount" REAL,
+    "customFeesJson" TEXT,
+    "feesTotal" REAL,
     "docusignEnvelopeId" TEXT,
     "docusignStatus" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "Reservation_litterId_fkey" FOREIGN KEY ("litterId") REFERENCES "Litter" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Reservation_puppyId_fkey" FOREIGN KEY ("puppyId") REFERENCES "Puppy" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "Reservation_puppyId_fkey" FOREIGN KEY ("puppyId") REFERENCES "Puppy" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Reservation_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Contract" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "customerId" TEXT NOT NULL,
+    "reservationId" TEXT,
+    "litterId" TEXT,
+    "title" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "depositAmount" REAL NOT NULL DEFAULT 0,
+    "feesJson" TEXT,
+    "totalAmount" REAL NOT NULL DEFAULT 0,
+    "notes" TEXT,
+    "docusignEnvelopeId" TEXT,
+    "docusignStatus" TEXT,
+    "sentAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Contract_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Contract_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Contract_litterId_fkey" FOREIGN KEY ("litterId") REFERENCES "Litter" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -151,10 +202,34 @@ CREATE INDEX "Dog_status_idx" ON "Dog"("status");
 CREATE INDEX "Dog_callName_idx" ON "Dog"("callName");
 
 -- CreateIndex
+CREATE INDEX "Dog_breed_idx" ON "Dog"("breed");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Puppy_dogId_key" ON "Puppy"("dogId");
 
 -- CreateIndex
+CREATE INDEX "Customer_name_idx" ON "Customer"("name");
+
+-- CreateIndex
+CREATE INDEX "Customer_email_idx" ON "Customer"("email");
+
+-- CreateIndex
+CREATE INDEX "Customer_phone_idx" ON "Customer"("phone");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Reservation_puppyId_key" ON "Reservation"("puppyId");
+
+-- CreateIndex
+CREATE INDEX "Reservation_customerId_idx" ON "Reservation"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Reservation_status_idx" ON "Reservation"("status");
+
+-- CreateIndex
+CREATE INDEX "Contract_customerId_idx" ON "Contract"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Contract_status_idx" ON "Contract"("status");
 
 -- CreateIndex
 CREATE INDEX "HealthRecord_dogId_idx" ON "HealthRecord"("dogId");
@@ -179,4 +254,3 @@ CREATE INDEX "Inquiry_createdAt_idx" ON "Inquiry"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "Inquiry_source_idx" ON "Inquiry"("source");
-

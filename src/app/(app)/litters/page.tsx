@@ -35,6 +35,7 @@ export default async function LittersPage() {
                 </h2>
                 <p className="text-sm text-[var(--muted)]">
                   Dam {l.dam.callName} · Sire {l.sire.callName}
+                  {l.breedType ? ` · ${l.breedType}` : ""}
                 </p>
               </div>
               <StatusBadge status={l.status} />

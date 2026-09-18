@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DOG_STATUSES, toInputDate } from "@/lib/utils";
+import { BREED_TYPES, DOG_STATUSES, toInputDate } from "@/lib/utils";
 
 type DogOption = { id: string; callName: string; sex: string; registeredName: string };
 
@@ -68,7 +68,14 @@ export function DogForm({ dog, dogs }: { dog?: Dog; dogs: DogOption[] }) {
         </div>
         <div>
           <label className="label">Breed</label>
-          <input name="breed" className="input" required defaultValue={dog?.breed || "Mini Golden Doodle"} />
+          <select name="breed" className="input" required defaultValue={BREED_TYPES.includes((dog?.breed || "Mini Golden Doodle") as typeof BREED_TYPES[number]) ? (dog?.breed || "Mini Golden Doodle") : "Mini Golden Doodle"}>
+            {BREED_TYPES.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+            {dog?.breed && !(BREED_TYPES as readonly string[]).includes(dog.breed) && (
+              <option value={dog.breed}>{dog.breed} (legacy)</option>
+            )}
+          </select>
         </div>
         <div>
           <label className="label">Date of birth</label>

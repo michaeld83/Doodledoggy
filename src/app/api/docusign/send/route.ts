@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { buildReservationEnvelope, sendEnvelope, getDocuSignConfig, isDocuSignConfigured, docusignSetupGuide } from "@/lib/docusign";
+import {
+  buildReservationEnvelope,
+  sendEnvelope,
+  getDocuSignConfig,
+  isDocuSignConfigured,
+  docusignSetupGuide,
+} from "@/lib/docusign";
+import { addOnsFromReservation, feesSnapshotJson } from "@/lib/fees";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -13,23 +20,43 @@ export async function POST(req: Request) {
 
   const reservation = await prisma.reservation.findUnique({
     where: { id: reservationId },
-    include: { litter: { include: { dam: true, sire: true } }, puppy: true },
+    include: {
+      litter: { include: { dam: true, sire: true } },
+      puppy: true,
+      customer: true,
+      contracts: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
   });
   if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!reservation.buyerEmail) {
-    return NextResponse.json({ error: "Buyer email required for DocuSign" }, { status: 400 });
+
+  const buyerName = reservation.customer?.name || reservation.buyerName || "";
+  const buyerEmail = reservation.customer?.email || reservation.buyerEmail || "";
+  const buyerPhone = reservation.customer?.phone || reservation.buyerPhone || null;
+
+  if (!buyerEmail) {
+    return NextResponse.json({ error: "Buyer/customer email required for DocuSign" }, { status: 400 });
+  }
+  if (!buyerName) {
+    return NextResponse.json({ error: "Buyer/customer name required for DocuSign" }, { status: 400 });
   }
 
   const litterLabel =
     reservation.litter.name || `${reservation.litter.dam.callName} × ${reservation.litter.sire.callName}`;
+  const addOns = addOnsFromReservation(reservation);
 
   const payload = buildReservationEnvelope({
-    buyerName: reservation.buyerName,
-    buyerEmail: reservation.buyerEmail,
+    buyerName,
+    buyerEmail,
+    buyerPhone,
     litterLabel,
+    breedType: reservation.litter.breedType,
     depositAmount: reservation.depositAmount,
     pickPosition: reservation.pickPosition,
     puppyName: reservation.puppy?.tempName,
+    paymentMethod: reservation.paymentMethod,
+    paidWhere: reservation.paidWhere,
+    paid: reservation.paid,
+    addOns,
   });
 
   const result = await sendEnvelope(payload);
@@ -42,8 +69,40 @@ export async function POST(req: Request) {
     },
   });
 
+  // Ensure a Contract exists for this customer and update DocuSign fields
+  let contract = reservation.contracts[0] || null;
+  const customerId = reservation.customerId;
+  if (customerId) {
+    const contractData = {
+      docusignEnvelopeId: result.envelopeId,
+      docusignStatus: result.status,
+      status: result.ok ? "SENT" : "DRAFT",
+      sentAt: result.ok ? new Date() : null,
+      feesJson: feesSnapshotJson(reservation.depositAmount, addOns),
+      totalAmount: payload.fees?.total ?? reservation.feesTotal ?? reservation.depositAmount,
+      depositAmount: reservation.depositAmount,
+      title: `Reservation — ${buyerName} — ${litterLabel}`,
+    };
+    if (contract) {
+      contract = await prisma.contract.update({
+        where: { id: contract.id },
+        data: contractData,
+      });
+    } else {
+      contract = await prisma.contract.create({
+        data: {
+          customerId,
+          reservationId,
+          litterId: reservation.litterId,
+          ...contractData,
+        },
+      });
+    }
+  }
+
   return NextResponse.json({
     ...result,
+    contract,
     config: {
       mode: getDocuSignConfig().mode,
       configured: isDocuSignConfigured(),

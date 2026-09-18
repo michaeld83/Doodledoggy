@@ -34,91 +34,158 @@ model Dog {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  mother   Dog?  @relation("MotherOffspring", fields: [motherId], references: [id], onDelete: SetNull)
-  father   Dog?  @relation("FatherOffspring", fields: [fatherId], references: [id], onDelete: SetNull)
-  childrenAsMother Dog[] @relation("MotherOffspring")
-  childrenAsFather Dog[] @relation("FatherOffspring")
-
-  littersAsDam Litter[] @relation("DamLitters")
-  littersAsSire Litter[] @relation("SireLitters")
-  healthRecords HealthRecord[]
-  puppyLink    Puppy?
+  mother           Dog?           @relation("MotherOffspring", fields: [motherId], references: [id], onDelete: SetNull)
+  father           Dog?           @relation("FatherOffspring", fields: [fatherId], references: [id], onDelete: SetNull)
+  childrenAsMother Dog[]          @relation("MotherOffspring")
+  childrenAsFather Dog[]          @relation("FatherOffspring")
+  littersAsDam     Litter[]       @relation("DamLitters")
+  littersAsSire    Litter[]       @relation("SireLitters")
+  healthRecords    HealthRecord[]
+  puppyLink        Puppy?
 
   @@index([status])
   @@index([callName])
+  @@index([breed])
 }
 
 model Litter {
-  id         String   @id @default(cuid())
-  name       String?
-  damId      String
-  sireId     String
-  whelpDate  DateTime?
+  id           String    @id @default(cuid())
+  name         String?
+  breedType    String? // Mini Golden Doodle | Micro Golden Doodle | Mini Bernedoodle | Micro Bernedoodle | Munchkin Bernedoodle
+  damId        String
+  sireId       String
+  whelpDate    DateTime?
   expectedDate DateTime?
-  notes      String?
-  status     String   @default("PLANNED") // PLANNED | EXPECTING | BORN | CLOSED
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  notes        String?
+  status       String    @default("PLANNED") // PLANNED | EXPECTING | BORN | CLOSED
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  dam   Dog @relation("DamLitters", fields: [damId], references: [id])
-  sire  Dog @relation("SireLitters", fields: [sireId], references: [id])
-  puppies Puppy[]
+  dam          Dog             @relation("DamLitters", fields: [damId], references: [id])
+  sire         Dog             @relation("SireLitters", fields: [sireId], references: [id])
+  puppies      Puppy[]
   reservations Reservation[]
-  coiChecks MatingCoiCheck[]
+  contracts    Contract[]
+  coiChecks    MatingCoiCheck[]
 }
 
 model Puppy {
-  id         String  @id @default(cuid())
-  litterId   String
-  tempName   String
-  sex        String? // MALE | FEMALE
-  color      String?
-  status     String  @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD | KEPT
+  id           String   @id @default(cuid())
+  litterId     String
+  tempName     String
+  sex          String? // MALE | FEMALE
+  color        String?
+  status       String   @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD | KEPT
   pickPosition Int?
-  dogId      String? @unique // if kept and registered as dog
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  dogId        String?  @unique
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  litter Litter @relation(fields: [litterId], references: [id], onDelete: Cascade)
-  dog    Dog?   @relation(fields: [dogId], references: [id], onDelete: SetNull)
+  litter      Litter       @relation(fields: [litterId], references: [id], onDelete: Cascade)
+  dog         Dog?         @relation(fields: [dogId], references: [id], onDelete: SetNull)
   reservation Reservation?
 }
 
-model Reservation {
-  id            String   @id @default(cuid())
-  litterId      String
-  puppyId       String?  @unique
-  buyerName     String
-  buyerEmail    String?
-  buyerPhone    String?
-  depositAmount Float
-  paymentMethod String?  // CASH | CHECK | VENMO | ZELLE | OTHER
-  paidWhere     String?
-  pickPosition  Int?
-  status        String   @default("OPEN") // OPEN | COMPLETED | CANCELLED | REFUNDED
-  notes         String?
-  docusignEnvelopeId String?
-  docusignStatus     String? // DRAFT | SENT_MOCK | CONFIGURED_PENDING
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String? // free-form full address
+  street    String?
+  city      String?
+  state     String?
+  zip       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  litter Litter @relation(fields: [litterId], references: [id], onDelete: Cascade)
-  puppy  Puppy? @relation(fields: [puppyId], references: [id], onDelete: SetNull)
-  inquiries Inquiry[]
+  reservations Reservation[]
+  contracts    Contract[]
+
+  @@index([name])
+  @@index([email])
+  @@index([phone])
+}
+
+model Reservation {
+  id                   String   @id @default(cuid())
+  litterId             String
+  puppyId              String?  @unique
+  customerId           String?
+  // Legacy buyer fields kept for old rows / denormalized display
+  buyerName            String?
+  buyerEmail           String?
+  buyerPhone           String?
+  depositAmount        Float
+  paymentMethod        String? // CASH | CHECK | VENMO | ZELLE | OTHER
+  paidWhere            String?
+  paid                 Boolean  @default(false)
+  pickPosition         Int?
+  status               String   @default("OPEN") // OPEN | COMPLETED | CANCELLED | REFUNDED
+  notes                String?
+  // Add-ons / fees
+  snugglePuppy         Boolean  @default(false)
+  snugglePuppyAmount   Float?
+  travelBag            Boolean  @default(false)
+  travelBagAmount      Float?
+  travelArrangements   Boolean  @default(false)
+  travelArrangementsNotes  String?
+  travelArrangementsAmount Float?
+  customFeesJson       String? // JSON: [{label, amount}]
+  feesTotal            Float? // cached deposit + selected fees
+  docusignEnvelopeId   String?
+  docusignStatus       String? // DRAFT | SENT_MOCK | CONFIGURED_PENDING
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  litter     Litter     @relation(fields: [litterId], references: [id], onDelete: Cascade)
+  puppy      Puppy?     @relation(fields: [puppyId], references: [id], onDelete: SetNull)
+  customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  inquiries  Inquiry[]
+  contracts  Contract[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model Contract {
+  id                 String   @id @default(cuid())
+  customerId         String
+  reservationId      String?
+  litterId           String?
+  title              String
+  status             String   @default("DRAFT") // DRAFT | SENT | SIGNED | CANCELLED
+  depositAmount      Float    @default(0)
+  feesJson           String? // JSON snapshot of fee lines + add-ons
+  totalAmount        Float    @default(0)
+  notes              String?
+  docusignEnvelopeId String?
+  docusignStatus     String?
+  sentAt             DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  litter      Litter?      @relation(fields: [litterId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([status])
 }
 
 model HealthRecord {
-  id          String   @id @default(cuid())
-  dogId       String
-  title       String
-  notes       String?
-  recordDate  DateTime @default(now())
-  followUpAt  DateTime?
-  filePath    String?
-  fileName    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String    @id @default(cuid())
+  dogId      String
+  title      String
+  notes      String?
+  recordDate DateTime  @default(now())
+  followUpAt DateTime?
+  filePath   String?
+  fileName   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   dog Dog @relation(fields: [dogId], references: [id], onDelete: Cascade)
 
@@ -127,7 +194,7 @@ model HealthRecord {
 }
 
 model MatingCoiCheck {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   litterId        String?
   damId           String
   sireId          String
@@ -135,11 +202,11 @@ model MatingCoiCheck {
   generations     Int
   commonAncestors String // JSON
   highRelatedness Boolean
-  confirmed       Boolean  @default(false)
+  confirmed       Boolean   @default(false)
   confirmedBy     String?
   confirmedAt     DateTime?
   warningMessage  String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   litter Litter? @relation(fields: [litterId], references: [id], onDelete: SetNull)
 }
@@ -156,10 +223,10 @@ model Inquiry {
   email         String
   phone         String?
   message       String?
-  source        String   @default("manual") // godaddy_form | email | manual | webhook
-  status        String   @default("NEW") // NEW | CONTACTED | QUALIFIED | ARCHIVED
-  externalId    String?  @unique // idempotency key from form retries / email Message-ID
-  rawPayload    String? // original JSON payload as string
+  source        String   @default("manual")
+  status        String   @default("NEW")
+  externalId    String?  @unique
+  rawPayload    String?
   reservationId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

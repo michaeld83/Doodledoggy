@@ -42,3 +42,5 @@ next-env.d.ts
 !/public/uploads/.gitkeep
 /secrets/
 .env
+.env*
+prisma/tmp/

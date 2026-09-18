@@ -33,6 +33,7 @@ export async function POST(req: Request) {
   const litter = await prisma.litter.create({
     data: {
       name: body.name || null,
+      breedType: body.breedType || null,
       damId,
       sireId,
       whelpDate: body.whelpDate ? new Date(body.whelpDate) : null,
