@@ -9,19 +9,19 @@ export function Header({ user }: { user: SessionUser }) {
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
             <Image
-              src="/branding/state-emblem.svg"
-              alt="Kennel emblem"
+              src="/branding/snuggly-doodles.png"
+              alt="Snuggly Doodles"
               width={56}
               height={56}
-              className="rounded-full"
+              className="rounded-full object-cover"
               priority
             />
             <Image
-              src="/branding/mini-golden-doodles.svg"
-              alt="Mini Golden Doodles Georgia"
-              width={200}
+              src="/branding/mini-goldendoodles-georgia.png"
+              alt="Mini Goldendoodles of Georgia"
+              width={180}
               height={72}
-              className="hidden sm:block"
+              className="hidden h-14 w-auto object-contain sm:block"
               priority
             />
           </Link>

@@ -1,7 +1,6 @@
-Replace these assets with your real logos:
+Brand logos (real assets):
+- snuggly-doodles.png — Snuggly Doodles round emblem (header left)
+- mini-goldendoodles-georgia.png — Mini Goldendoodles of Georgia bone logo (QR cropped for header)
+- mini-goldendoodles-georgia-full.png — full Georgia logo including QR (contracts / print)
 
-1. state-emblem.svg (or .png) — round state / kennel emblem (header left)
-2. mini-golden-doodles.svg (or .png) — "Mini Golden Doodles Georgia" bone + dogs (header right of emblem)
-
-Update paths in src/components/Header.tsx if you change filenames.
-Recommended: emblem ~80x80, wordmark ~280x80, transparent PNG or SVG.
+Referenced from src/components/Header.tsx.
