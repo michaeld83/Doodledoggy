@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { normalizeAddOns, reservationFeeFields, feesSnapshotJson } from "@/lib/fees";
+import { puppyFieldsFromReservation } from "@/lib/puppy";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -78,10 +79,14 @@ export async function POST(req: Request) {
   if (puppyId) {
     await prisma.puppy.update({
       where: { id: puppyId },
-      data: {
-        status: "RESERVED",
-        pickPosition: reservation.pickPosition ?? undefined,
-      },
+      data: puppyFieldsFromReservation({
+        customerId: reservation.customerId,
+        pickPosition: reservation.pickPosition,
+        snugglePuppy: reservation.snugglePuppy,
+        travelBag: reservation.travelBag,
+        travelArrangements: reservation.travelArrangements,
+        status: reservation.status,
+      }),
     });
   }
 

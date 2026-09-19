@@ -70,21 +70,33 @@ model Litter {
 }
 
 model Puppy {
-  id           String   @id @default(cuid())
-  litterId     String
-  tempName     String
-  sex          String? // MALE | FEMALE
-  color        String?
-  status       String   @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD | KEPT
-  pickPosition Int?
-  dogId        String?  @unique
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  litterId             String
+  /// Original / temporary litter name (e.g. "Pup D", "Honey")
+  tempName             String
+  /// Name we start calling them (given / call name)
+  callName             String?
+  sex                  String? // MALE | FEMALE
+  color                String?
+  status               String   @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD | KEPT
+  pickPosition         Int?
+  dogId                String?  @unique
+  /// Picker customer (synced from reservation when linked; manual override allowed)
+  customerId           String?
+  wantsSnugglePuppy    Boolean  @default(false)
+  /// Travel docs / travel bag / travel arrangements
+  wantsTravelDocuments Boolean  @default(false)
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   litter      Litter       @relation(fields: [litterId], references: [id], onDelete: Cascade)
   dog         Dog?         @relation(fields: [dogId], references: [id], onDelete: SetNull)
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
   reservation Reservation?
+
+  @@index([customerId])
+  @@index([litterId])
 }
 
 model Customer {
@@ -103,6 +115,7 @@ model Customer {
 
   reservations Reservation[]
   contracts    Contract[]
+  puppies      Puppy[]
 
   @@index([name])
   @@index([email])

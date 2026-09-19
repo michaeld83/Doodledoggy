@@ -51,11 +51,15 @@ CREATE TABLE "Puppy" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "litterId" TEXT NOT NULL,
     "tempName" TEXT NOT NULL,
+    "callName" TEXT,
     "sex" TEXT,
     "color" TEXT,
     "status" TEXT NOT NULL DEFAULT 'AVAILABLE',
     "pickPosition" INTEGER,
     "dogId" TEXT,
+    "customerId" TEXT,
+    "wantsSnugglePuppy" BOOLEAN NOT NULL DEFAULT false,
+    "wantsTravelDocuments" BOOLEAN NOT NULL DEFAULT false,
     "notes" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
@@ -206,6 +210,8 @@ CREATE INDEX "Dog_breed_idx" ON "Dog"("breed");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Puppy_dogId_key" ON "Puppy"("dogId");
+CREATE INDEX "Puppy_customerId_idx" ON "Puppy"("customerId");
+CREATE INDEX "Puppy_litterId_idx" ON "Puppy"("litterId");
 
 -- CreateIndex
 CREATE INDEX "Customer_name_idx" ON "Customer"("name");

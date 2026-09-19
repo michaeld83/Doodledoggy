@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { normalizeAddOns, reservationFeeFields, feesSnapshotJson } from "@/lib/fees";
+import { puppyFieldsFromReservation } from "@/lib/puppy";
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const session = await getSession();
@@ -45,6 +46,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     });
   }
 
+  const existingRes = await prisma.reservation.findUnique({ where: { id: params.id } });
+  if (!existingRes) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const reservation = await prisma.reservation.update({
     where: { id: params.id },
     data: {
@@ -69,6 +73,35 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       ...feeFields,
     },
   });
+
+  // Sync linked puppy picker + add-on flags; clear RESERVED on previous puppy if unassigned
+  const prevPuppyId = existingRes.puppyId;
+  const nextPuppyId = reservation.puppyId;
+  if (prevPuppyId && prevPuppyId !== nextPuppyId) {
+    const stillLinked = await prisma.reservation.findFirst({
+      where: { puppyId: prevPuppyId, id: { not: reservation.id }, status: { not: "CANCELLED" } },
+    });
+    if (!stillLinked) {
+      await prisma.puppy.update({
+        where: { id: prevPuppyId },
+        data: { status: "AVAILABLE" },
+      });
+    }
+  }
+  if (nextPuppyId) {
+    await prisma.puppy.update({
+      where: { id: nextPuppyId },
+      data: puppyFieldsFromReservation({
+        customerId: reservation.customerId,
+        pickPosition: reservation.pickPosition,
+        snugglePuppy: reservation.snugglePuppy,
+        travelBag: reservation.travelBag,
+        travelArrangements: reservation.travelArrangements,
+        status: reservation.status,
+      }),
+    });
+  }
+
   return NextResponse.json(reservation);
 }
 

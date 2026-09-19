@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       applied: applied.length,
       skipped: skipped.length,
       errors,
-      note: "Idempotent migrate for breedType, Customer, Contract, reservation fee columns",
+      note: "Idempotent migrate for breedType, Customer, Contract, reservation fees, puppy tracking fields",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

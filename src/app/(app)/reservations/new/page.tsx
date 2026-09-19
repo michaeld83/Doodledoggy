@@ -44,7 +44,7 @@ export default async function NewReservationPage({
           id: l.id,
           label: l.name || `${l.dam.callName} × ${l.sire.callName}`,
           breedType: l.breedType,
-          puppies: l.puppies.map((p) => ({ id: p.id, tempName: p.tempName, status: p.status })),
+          puppies: l.puppies.map((p) => ({ id: p.id, tempName: p.callName ? `${p.callName} (${p.tempName})` : p.tempName, status: p.status })),
         }))}
         initial={
           preselectedCustomer

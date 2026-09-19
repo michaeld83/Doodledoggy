@@ -13,7 +13,15 @@ export default async function LitterDetailPage({ params }: { params: { id: strin
     include: {
       dam: true,
       sire: true,
-      puppies: { orderBy: [{ pickPosition: "asc" }, { tempName: "asc" }] },
+      puppies: {
+        orderBy: [{ pickPosition: "asc" }, { tempName: "asc" }],
+        include: {
+          customer: { select: { id: true, name: true, phone: true } },
+          reservation: {
+            include: { customer: { select: { id: true, name: true, phone: true } } },
+          },
+        },
+      },
       reservations: true,
       coiChecks: { orderBy: { createdAt: "desc" }, take: 3 },
     },

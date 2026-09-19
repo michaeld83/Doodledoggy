@@ -60,3 +60,39 @@ CREATE INDEX IF NOT EXISTS "Reservation_customerId_idx" ON "Reservation"("custom
 CREATE INDEX IF NOT EXISTS "Reservation_status_idx" ON "Reservation"("status");
 CREATE INDEX IF NOT EXISTS "Contract_customerId_idx" ON "Contract"("customerId");
 CREATE INDEX IF NOT EXISTS "Contract_status_idx" ON "Contract"("status");
+
+-- Puppy: call name, picker, snuggle / travel docs
+ALTER TABLE "Puppy" ADD COLUMN "callName" TEXT;
+ALTER TABLE "Puppy" ADD COLUMN "customerId" TEXT;
+ALTER TABLE "Puppy" ADD COLUMN "wantsSnugglePuppy" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Puppy" ADD COLUMN "wantsTravelDocuments" BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS "Puppy_customerId_idx" ON "Puppy"("customerId");
+CREATE INDEX IF NOT EXISTS "Puppy_litterId_idx" ON "Puppy"("litterId");
+
+-- Best-effort backfill: picker + flags from linked reservation
+UPDATE "Puppy"
+SET "customerId" = (
+  SELECT "customerId" FROM "Reservation"
+  WHERE "Reservation"."puppyId" = "Puppy"."id" AND "Reservation"."customerId" IS NOT NULL
+  LIMIT 1
+)
+WHERE "customerId" IS NULL
+  AND EXISTS (
+    SELECT 1 FROM "Reservation"
+    WHERE "Reservation"."puppyId" = "Puppy"."id" AND "Reservation"."customerId" IS NOT NULL
+  );
+
+UPDATE "Puppy"
+SET "wantsSnugglePuppy" = 1
+WHERE EXISTS (
+  SELECT 1 FROM "Reservation"
+  WHERE "Reservation"."puppyId" = "Puppy"."id" AND "Reservation"."snugglePuppy" = 1
+);
+
+UPDATE "Puppy"
+SET "wantsTravelDocuments" = 1
+WHERE EXISTS (
+  SELECT 1 FROM "Reservation"
+  WHERE "Reservation"."puppyId" = "Puppy"."id"
+    AND ("Reservation"."travelBag" = 1 OR "Reservation"."travelArrangements" = 1)
+);

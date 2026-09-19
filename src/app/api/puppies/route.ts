@@ -9,11 +9,15 @@ export async function POST(req: Request) {
   const puppy = await prisma.puppy.create({
     data: {
       litterId: String(body.litterId),
-      tempName: String(body.tempName || "Pup").trim(),
+      tempName: String(body.tempName || body.originalName || "Pup").trim(),
+      callName: body.callName ? String(body.callName).trim() : null,
       sex: body.sex || null,
       color: body.color || null,
       status: body.status || "AVAILABLE",
-      pickPosition: body.pickPosition != null ? Number(body.pickPosition) : null,
+      pickPosition: body.pickPosition != null && body.pickPosition !== "" ? Number(body.pickPosition) : null,
+      customerId: body.customerId || null,
+      wantsSnugglePuppy: Boolean(body.wantsSnugglePuppy),
+      wantsTravelDocuments: Boolean(body.wantsTravelDocuments),
       notes: body.notes || null,
     },
   });
