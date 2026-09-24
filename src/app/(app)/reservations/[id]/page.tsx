@@ -125,7 +125,7 @@ export default async function ReservationDetailPage({ params }: { params: { id: 
           <h2 className="font-serif text-lg text-[var(--brown)]">DocuSign</h2>
           <p className="text-sm text-[var(--muted)]">
             Builds a reservation agreement with all fee lines. Mock mode never calls DocuSign.
-            Live/sandbox with credentials returns CONFIGURED_PENDING — this stub does not fake
+            Sandbox/live with credentials sends a real DocuSign envelope; mock mode does not call the API. Never fakes
             successful live sends.
           </p>
           <dl className="space-y-1 text-sm">

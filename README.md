@@ -10,7 +10,7 @@ Built for exactly **2 users** (no public signup). Soft kennel-friendly UI with d
 - **Pedigree** — interactive 3–4 generation view on each dog page (live from relationships)
 - **Inbreeding / COI** — Wright’s coefficient before mating/litter; warns on high COI or common ancestor within N gens; **requires confirmation** (never silent allow)
 - **Litters & puppies** — dam/sire, whelp/expected dates, notes; puppies with temp name, sex, color, status, pick position
-- **Deposits / DocuSign stub** — reservations with payment tracking; payload builder + mock path; live send never faked
+- **Deposits / DocuSign** — reservations with payment tracking; mock path + live JWT sandbox/production envelope send
 - **Health/vet files** — notes + uploads on disk; timeline on dog page
 - **Auth** — simple login; 2 seeded users
 - **Dashboard** — active dogs, upcoming litters, open reservations, health follow-ups, new inquiries
@@ -71,15 +71,19 @@ docker compose up --build
 | `DOCUSIGN_USER_ID` | Impersonated user GUID | empty |
 | `DOCUSIGN_ACCOUNT_ID` | Account ID | empty |
 | `DOCUSIGN_AUTH_SERVER` | Auth host | `https://account-d.docusign.com` |
-| `DOCUSIGN_PRIVATE_KEY_PATH` | RSA private key file | empty |
+| `DOCUSIGN_ACCOUNT_BASE_URI` | REST API base | `https://demo.docusign.net` |
+| `DOCUSIGN_PRIVATE_KEY` | RSA PEM string (Vercel) | empty |
+| `DOCUSIGN_PRIVATE_KEY_PATH` | RSA private key file (local) | empty |
 
 ## DocuSign setup (JWT)
 
 1. Create a DocuSign developer account and an Integration (JWT Grant).
-2. Generate an RSA keypair; upload the **public** key to DocuSign; store the **private** key on the server.
+2. Generate an RSA keypair; upload the **public** key to DocuSign; keep the **private** key out of git.
 3. Set `DOCUSIGN_*` env vars and `DOCUSIGN_MODE=sandbox` (or `live`).
-4. Grant one-time JWT consent for the integration key.
-5. This app **builds envelope payloads** and supports **mock** sends. With credentials present but no full `docusign-esign` JWT client wired, status is `CONFIGURED_PENDING` — it does **not** claim a successful live send.
+4. For Vercel, set `DOCUSIGN_PRIVATE_KEY` to the PEM text (newlines as `\n`). Locally you can use `DOCUSIGN_PRIVATE_KEY_PATH` instead.
+5. Set `DOCUSIGN_ACCOUNT_BASE_URI` (`https://demo.docusign.net` for sandbox).
+6. Grant one-time JWT consent (open the consent URL from a `CONSENT_REQUIRED` response or Settings guide).
+7. Sandbox/live mode uses Node crypto RS256 JWT + REST envelope create with status `sent`. Success always returns a real DocuSign `envelopeId`. Mock mode is unchanged.
 
 See **Settings** in the app for the same checklist.
 

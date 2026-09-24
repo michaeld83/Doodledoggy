@@ -43,15 +43,23 @@ export default async function SettingsPage() {
           <li>DOCUSIGN_INTEGRATION_KEY: {cfg.integrationKey ? "set" : "empty"}</li>
           <li>DOCUSIGN_USER_ID: {cfg.userId ? "set" : "empty"}</li>
           <li>DOCUSIGN_ACCOUNT_ID: {cfg.accountId ? "set" : "empty"}</li>
-          <li>DOCUSIGN_PRIVATE_KEY_PATH: {cfg.privateKeyPath || "empty"}</li>
+          <li>
+            Private key:{" "}
+            {cfg.privateKeyPem
+              ? "DOCUSIGN_PRIVATE_KEY set"
+              : cfg.privateKeyPath
+                ? `path set (${cfg.privateKeyPath})`
+                : "empty"}
+          </li>
           <li>DOCUSIGN_AUTH_SERVER: {cfg.authServer}</li>
+          <li>DOCUSIGN_ACCOUNT_BASE_URI: {cfg.accountBaseUri}</li>
           <li>DOCUSIGN_MODE: {cfg.mode}</li>
         </ul>
         <pre className="overflow-x-auto rounded-lg bg-[var(--cream-dark)] p-3 text-xs whitespace-pre-wrap">{docusignSetupGuide()}</pre>
         <p className="mt-3 text-xs text-[var(--muted)]">
-          JWT/OAuth: create Integration Key with JWT grant, upload RSA public key, store private key on disk,
-          grant consent once. This app builds payloads and supports mock sends; it will not report a successful
-          live DocuSign send without a real API integration.
+          JWT grant uses Node crypto (RS256). Sandbox/live sends create a real DocuSign envelope with status
+          &quot;sent&quot;. If you see CONSENT_REQUIRED, open the consent URL once while logged into DocuSign,
+          then retry. Success always includes a real API envelopeId.
         </p>
       </section>
 
