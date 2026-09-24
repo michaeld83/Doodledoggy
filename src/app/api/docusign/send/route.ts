@@ -86,7 +86,8 @@ export async function POST(req: Request) {
       litter: litterLabel,
       puppy: reservation.puppy?.tempName || null,
       price: "TBD",
-      place: reservation.paidWhere || null,
+      // Place on the contract = pick number from the reservation (e.g. "3")
+      place: reservation.pickPosition != null ? String(reservation.pickPosition) : null,
       depositMethod: reservation.paymentMethod || null,
       depositAmount: reservation.depositAmount,
     },

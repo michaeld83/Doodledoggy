@@ -165,7 +165,7 @@ export function buildAddressEmailBlurb(fields: AddressFields): string {
     `Puppy: ${fields.puppy || "—"}`,
     `Price: ${String(fields.price || "TBD").trim() || "TBD"}`,
     `Deposit: $${formatDepositDollars(fields.depositAmount)}`,
-    `Place paid: ${fields.place || "—"}`,
+    `Pick # (Place): ${fields.place || "—"}`,
     `Deposit method: ${fields.depositMethod || "—"}`,
   ];
   const address = [fields.street, fields.city, fields.state, fields.zip]

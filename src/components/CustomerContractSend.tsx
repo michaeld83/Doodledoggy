@@ -11,6 +11,7 @@ export type ContractPrefill = {
   buyerEmail: string;
   litter?: string;
   puppy?: string;
+  /** Pick number from the latest reservation (e.g. "3") */
   place?: string;
   depositMethod?: string;
   depositAmount?: number | null;
@@ -55,7 +56,10 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
   const [depositAmount, setDepositAmount] = useState(
     depositPrefillString(prefill.depositAmount)
   );
-  const [place, setPlace] = useState(prefill.place || "");
+  const initialPick = /^\d+$/.test(String(prefill.place || "").trim())
+    ? String(Number(prefill.place))
+    : "";
+  const [place, setPlace] = useState(initialPick);
   const [depositMethod, setDepositMethod] = useState(
     prefill.depositMethod || ""
   );
@@ -129,8 +133,8 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
       <div>
         <h2 className="font-serif text-lg text-[var(--brown)]">Send contract</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Staff fill name, email, litter, puppy, price, deposit amount, place
-          paid, and deposit method. Buyer address/phone are filled by the
+          Staff fill name, email, litter, puppy, price, deposit amount, pick #
+          (Place), and deposit method. Buyer address/phone are filled by the
           purchaser when signing (prefilled from customer record only when
           already on file).
         </p>
@@ -250,14 +254,20 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
             ))}
           </select>
         </div>
-        <div className="sm:col-span-2">
-          <label className="label">Place paid / where paid</label>
-          <input
+        <div>
+          <label className="label">Pick # (Place)</label>
+          <select
             className="input"
             value={place}
             onChange={(e) => setPlace(e.target.value)}
-            placeholder="e.g. farm visit, Zelle"
-          />
+          >
+            <option value="">—</option>
+            {Array.from({ length: Math.max(20, Number(initialPick) || 0) }, (_, i) => String(i + 1)).map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

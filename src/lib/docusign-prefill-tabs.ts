@@ -7,6 +7,9 @@
  *
  * Mapping: match known template tabLabels when present; else required===true
  * sorted by y then x → [litter/puppy, place, price, deposit method].
+ *
+ * Values: Litter/Puppy = "litter / puppy"; Place = pick number only ("3");
+ * Price = staff price or TBD; Deposit Method = "Venmo — $1200".
  */
 
 import type { TemplateFamily } from "@/lib/docusign-template-tabs";
@@ -116,11 +119,23 @@ export function formatDepositMethodValue(
   return m;
 }
 
+/**
+ * Place on the contract = puppy pick number (e.g. "3"), never where the
+ * deposit was paid. Returns "" unless the input is a positive whole number.
+ */
+export function normalizePickNumber(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v).trim().replace(/^#/, "");
+  if (!/^\d{1,3}$/.test(s)) return "";
+  const n = Number(s);
+  return Number.isInteger(n) && n > 0 ? String(n) : "";
+}
+
 export function buildPrefillValues(
   fields: PrefillStaffFields
 ): Record<PrefillFieldKey, string> {
   const litterPuppy = formatLitterPuppy(fields.litter, fields.puppy);
-  const place = String(fields.place ?? "").trim();
+  const place = normalizePickNumber(fields.place);
   const price = String(fields.price ?? "").trim() || "TBD";
   const depositMethod = formatDepositMethodValue(
     fields.depositMethod,

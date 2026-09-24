@@ -125,7 +125,10 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           buyerEmail: customer.email || "",
           litter: litterLabel,
           puppy: puppyLabel,
-          place: latestReservation?.paidWhere || "",
+          place:
+            latestReservation?.pickPosition != null
+              ? String(latestReservation.pickPosition)
+              : "",
           depositMethod: latestReservation?.paymentMethod || "",
           depositAmount: latestReservation?.depositAmount ?? null,
           paymentsTotal,

@@ -9,6 +9,7 @@ import {
   docusignSetupGuide,
   type EnvelopePayload,
 } from "@/lib/docusign";
+import { normalizePickNumber } from "@/lib/docusign-prefill-tabs";
 import {
   buildAddressEmailBlurb,
   type AddressFields,
@@ -81,7 +82,15 @@ export async function POST(req: Request) {
   const litter = str(fieldsIn.litter);
   const puppy = str(fieldsIn.puppy);
   const price = str(fieldsIn.price) || "TBD";
-  const place = str(fieldsIn.place);
+  // Place = pick number (1–20 in the UI), not where the deposit was paid.
+  const placeRaw = str(fieldsIn.place);
+  const place = normalizePickNumber(placeRaw);
+  if (placeRaw && !place) {
+    return NextResponse.json(
+      { ok: false, status: "VALIDATION_ERROR", error: "Pick # (Place) must be a whole number, e.g. 3." },
+      { status: 400 }
+    );
+  }
   const depositMethod = str(fieldsIn.depositMethod);
   const depositAmountRaw = fieldsIn.depositAmount;
   let depositAmount = 0;
