@@ -118,6 +118,7 @@ model Customer {
   reservations Reservation[]
   contracts    Contract[]
   puppies      Puppy[]
+  payments     Payment[]
 
   @@index([name])
   @@index([email])
@@ -160,6 +161,7 @@ model Reservation {
   customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   inquiries  Inquiry[]
   contracts  Contract[]
+  payments   Payment[]
 
   @@index([customerId])
   @@index([status])
@@ -190,9 +192,32 @@ model Contract {
   customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
   litter      Litter?      @relation(fields: [litterId], references: [id], onDelete: SetNull)
+  payments    Payment[]
 
   @@index([customerId])
   @@index([status])
+}
+
+
+model Payment {
+  id            String   @id @default(cuid())
+  customerId    String
+  contractId    String?
+  reservationId String?
+  amount        Float
+  method        String? // CASH | CHECK | VENMO | ZELLE | OTHER
+  paidWhere     String?
+  paidAt        DateTime @default(now())
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contract    Contract?    @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([contractId])
 }
 
 model HealthRecord {

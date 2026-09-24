@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { DeleteCustomerButton } from "@/components/DeleteCustomerButton";
 import { CustomerContractSend } from "@/components/CustomerContractSend";
+import { CustomerPayments } from "@/components/CustomerPayments";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,10 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       contracts: {
         include: { litter: true },
         orderBy: { createdAt: "desc" },
+      },
+      payments: {
+        include: { contract: { select: { id: true, title: true } } },
+        orderBy: { paidAt: "desc" },
       },
     },
   });
@@ -53,6 +58,15 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
   const puppyLabel = latestReservation?.puppy
     ? latestReservation.puppy.callName || latestReservation.puppy.tempName || ""
     : "";
+
+  const paymentsTotal = customer.payments.reduce(
+    (sum, p) => sum + (Number(p.amount) || 0),
+    0
+  );
+  const latestDeposit =
+    customer.contracts.find((c) => Number(c.depositAmount) > 0)?.depositAmount ??
+    latestReservation?.depositAmount ??
+    null;
 
   return (
     <div className="space-y-6">
@@ -113,6 +127,8 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           puppy: puppyLabel,
           place: latestReservation?.paidWhere || "",
           depositMethod: latestReservation?.paymentMethod || "",
+          depositAmount: latestReservation?.depositAmount ?? null,
+          paymentsTotal,
           reservationId: latestReservation?.id || null,
           lastContract,
         }}
@@ -171,6 +187,26 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           ))}
         </div>
       </section>
+
+      <CustomerPayments
+        customerId={customer.id}
+        payments={customer.payments.map((p) => ({
+          id: p.id,
+          amount: p.amount,
+          method: p.method,
+          paidWhere: p.paidWhere,
+          paidAt: p.paidAt,
+          notes: p.notes,
+          contractId: p.contractId,
+          contractTitle: p.contract?.title || null,
+        }))}
+        contracts={customer.contracts.map((c) => ({
+          id: c.id,
+          title: c.title,
+          depositAmount: c.depositAmount,
+        }))}
+        latestDeposit={latestDeposit}
+      />
     </div>
   );
 }

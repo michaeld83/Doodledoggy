@@ -31,6 +31,8 @@ export type AddressFields = Partial<Record<AddressFieldKey, string | null | unde
   place?: string | null;
   /** Deposit payment method (CASH/VENMO/…) */
   depositMethod?: string | null;
+  /** Deposit amount in dollars (staff field; not puppy price) */
+  depositAmount?: number | string | null;
   notes?: string | null;
 };
 
@@ -146,6 +148,14 @@ export function buildBuyerAddressTextTabs(
   return tabs;
 }
 
+
+function formatDepositDollars(v: number | string | null | undefined): string {
+  if (v === null || v === undefined || v === "") return "0.00";
+  const n = typeof v === "number" ? v : Number(String(v).replace(/[$,]/g, ""));
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toFixed(2);
+}
+
 /** Contract email blurb + audit summary (staff fields + optional address). */
 export function buildAddressEmailBlurb(fields: AddressFields): string {
   const lines = [
@@ -154,6 +164,7 @@ export function buildAddressEmailBlurb(fields: AddressFields): string {
     `Litter: ${fields.litter || "—"}`,
     `Puppy: ${fields.puppy || "—"}`,
     `Price: ${String(fields.price || "TBD").trim() || "TBD"}`,
+    `Deposit: $${formatDepositDollars(fields.depositAmount)}`,
     `Place paid: ${fields.place || "—"}`,
     `Deposit method: ${fields.depositMethod || "—"}`,
   ];

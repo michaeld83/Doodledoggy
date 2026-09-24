@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PAYMENT_METHODS } from "@/lib/utils";
+import { PAYMENT_METHODS, formatMoney } from "@/lib/utils";
 
 export type ContractPrefill = {
   customerId: string;
@@ -13,6 +13,8 @@ export type ContractPrefill = {
   puppy?: string;
   place?: string;
   depositMethod?: string;
+  depositAmount?: number | null;
+  paymentsTotal?: number;
   reservationId?: string | null;
   lastContract?: {
     id: string;
@@ -28,6 +30,14 @@ const TEMPLATES = [
   { key: "bernedoodle", label: "Bernedoodle" },
 ] as const;
 
+function depositPrefillString(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "";
+  if (!Number.isFinite(v)) return "";
+  // show empty for 0 so staff can leave blank; still allow 0 if they type it
+  if (v === 0) return "";
+  return String(v);
+}
+
 export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) {
   const router = useRouter();
   const initialKey =
@@ -42,6 +52,9 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
   const [litter, setLitter] = useState(prefill.litter || "");
   const [puppy, setPuppy] = useState(prefill.puppy || "");
   const [price, setPrice] = useState("TBD");
+  const [depositAmount, setDepositAmount] = useState(
+    depositPrefillString(prefill.depositAmount)
+  );
   const [place, setPlace] = useState(prefill.place || "");
   const [depositMethod, setDepositMethod] = useState(
     prefill.depositMethod || ""
@@ -65,6 +78,10 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
     setMsg("");
     setOk(null);
     try {
+      const depositParsed =
+        depositAmount.trim() === ""
+          ? 0
+          : Number(depositAmount.replace(/[$,]/g, ""));
       const res = await fetch("/api/docusign/send-customer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,6 +95,7 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
             litter: litter.trim() || null,
             puppy: puppy.trim() || null,
             price: price.trim() || "TBD",
+            depositAmount: Number.isFinite(depositParsed) ? depositParsed : 0,
             place: place.trim() || null,
             depositMethod: depositMethod.trim() || null,
           },
@@ -99,15 +117,24 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
     }
   }
 
+  const paymentsHint =
+    typeof prefill.paymentsTotal === "number" && prefill.paymentsTotal > 0
+      ? `Payments already recorded: ${formatMoney(prefill.paymentsTotal)}`
+      : null;
+
   return (
     <section className="card space-y-4">
       <div>
         <h2 className="font-serif text-lg text-[var(--brown)]">Send contract</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Staff fill name, email, litter, puppy, price, place paid, and deposit
-          method. Buyer address/phone are filled by the purchaser when signing
-          (prefilled from customer record only when already on file).
+          Staff fill name, email, litter, puppy, price, deposit amount, place
+          paid, and deposit method. Buyer address/phone are filled by the
+          purchaser when signing (prefilled from customer record only when
+          already on file).
         </p>
+        {paymentsHint && (
+          <p className="mt-1 text-xs text-[var(--brown-soft)]">{paymentsHint}</p>
+        )}
       </div>
 
       {prefill.lastContract && (
@@ -190,13 +217,21 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
           </p>
         </div>
         <div>
-          <label className="label">Place paid / where paid</label>
+          <label className="label">Deposit amount</label>
           <input
             className="input"
-            value={place}
-            onChange={(e) => setPlace(e.target.value)}
-            placeholder="e.g. farm visit, Zelle"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={depositAmount}
+            onChange={(e) => setDepositAmount(e.target.value)}
+            placeholder="0"
           />
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Dollars for the deposit (not the puppy price above). Prefills from
+            latest reservation when available.
+          </p>
         </div>
         <div>
           <label className="label">Deposit method</label>
@@ -212,6 +247,15 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
               </option>
             ))}
           </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Place paid / where paid</label>
+          <input
+            className="input"
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
+            placeholder="e.g. farm visit, Zelle"
+          />
         </div>
       </div>
 

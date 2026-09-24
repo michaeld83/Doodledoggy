@@ -102,3 +102,23 @@ ALTER TABLE "Customer" ADD COLUMN "docusignTemplateKey" TEXT;
 ALTER TABLE "Contract" ADD COLUMN "docusignTemplateKey" TEXT;
 ALTER TABLE "Contract" ADD COLUMN "docusignTemplateId" TEXT;
 ALTER TABLE "Contract" ADD COLUMN "templateFieldsJson" TEXT;
+
+-- Payment: record payments against customers (pay over time)
+CREATE TABLE IF NOT EXISTS "Payment" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "customerId" TEXT NOT NULL,
+    "contractId" TEXT,
+    "reservationId" TEXT,
+    "amount" REAL NOT NULL,
+    "method" TEXT,
+    "paidWhere" TEXT,
+    "paidAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "notes" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Payment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Payment_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "Contract" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Payment_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+CREATE INDEX IF NOT EXISTS "Payment_customerId_idx" ON "Payment"("customerId");
+CREATE INDEX IF NOT EXISTS "Payment_contractId_idx" ON "Payment"("contractId");

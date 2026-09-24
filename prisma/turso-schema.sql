@@ -196,6 +196,24 @@ CREATE TABLE "Inquiry" (
     CONSTRAINT "Inquiry_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "Payment" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "customerId" TEXT NOT NULL,
+    "contractId" TEXT,
+    "reservationId" TEXT,
+    "amount" REAL NOT NULL,
+    "method" TEXT,
+    "paidWhere" TEXT,
+    "paidAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "notes" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Payment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Payment_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "Contract" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Payment_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -260,3 +278,9 @@ CREATE INDEX "Inquiry_createdAt_idx" ON "Inquiry"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "Inquiry_source_idx" ON "Inquiry"("source");
+
+-- CreateIndex
+CREATE INDEX "Payment_customerId_idx" ON "Payment"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Payment_contractId_idx" ON "Payment"("contractId");

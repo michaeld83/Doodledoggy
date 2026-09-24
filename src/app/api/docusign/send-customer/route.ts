@@ -73,6 +73,12 @@ export async function POST(req: Request) {
   const price = str(fieldsIn.price) || "TBD";
   const place = str(fieldsIn.place);
   const depositMethod = str(fieldsIn.depositMethod);
+  const depositAmountRaw = fieldsIn.depositAmount;
+  let depositAmount = 0;
+  if (depositAmountRaw !== null && depositAmountRaw !== undefined && depositAmountRaw !== "") {
+    const n = Number(String(depositAmountRaw).replace(/[$,]/g, ""));
+    if (Number.isFinite(n) && n >= 0) depositAmount = n;
+  }
 
   // Address/phone: only from customer record (buyer fills at signing if missing)
   const street = customer.street || "";
@@ -96,6 +102,7 @@ export async function POST(req: Request) {
     price,
     place: place || null,
     depositMethod: depositMethod || null,
+    depositAmount,
     // Only include address pieces that exist on the customer
     ...(street ? { street } : {}),
     ...(city ? { city } : {}),
@@ -112,6 +119,7 @@ export async function POST(req: Request) {
     price,
     place: place || null,
     depositMethod: depositMethod || null,
+    depositAmount,
     street: street || null,
     city: city || null,
     state: state || null,
@@ -148,6 +156,7 @@ export async function POST(req: Request) {
       puppy,
       place,
       depositMethod,
+      depositAmount: String(depositAmount),
     },
   };
 
@@ -170,7 +179,7 @@ export async function POST(req: Request) {
       litterId,
       title: `${familyLabel} contract — ${buyerName}`,
       status: result.ok ? "SENT" : "DRAFT",
-      depositAmount: 0,
+      depositAmount,
       totalAmount: 0,
       notes: null,
       docusignEnvelopeId: result.envelopeId,
