@@ -2,17 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PAYMENT_METHODS } from "@/lib/utils";
 
 export type ContractPrefill = {
   customerId: string;
   preferredTemplateKey?: string | null;
   buyerName: string;
   buyerEmail: string;
-  street: string;
-  city: string;
-  state: string;
-  zip: string;
-  phone: string;
+  litter?: string;
+  puppy?: string;
+  place?: string;
+  depositMethod?: string;
+  reservationId?: string | null;
   lastContract?: {
     id: string;
     title: string;
@@ -38,13 +39,13 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
   const [templateKey, setTemplateKey] = useState<string>(initialKey);
   const [buyerName, setBuyerName] = useState(prefill.buyerName || "");
   const [buyerEmail, setBuyerEmail] = useState(prefill.buyerEmail || "");
-  const [street, setStreet] = useState(prefill.street || "");
-  const [city, setCity] = useState(prefill.city || "");
-  const [state, setState] = useState(prefill.state || "");
-  const [zip, setZip] = useState(prefill.zip || "");
-  const [phone, setPhone] = useState(prefill.phone || "");
+  const [litter, setLitter] = useState(prefill.litter || "");
+  const [puppy, setPuppy] = useState(prefill.puppy || "");
   const [price, setPrice] = useState("TBD");
-  const [notes, setNotes] = useState("");
+  const [place, setPlace] = useState(prefill.place || "");
+  const [depositMethod, setDepositMethod] = useState(
+    prefill.depositMethod || ""
+  );
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [ok, setOk] = useState<boolean | null>(null);
@@ -70,16 +71,15 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
         body: JSON.stringify({
           customerId: prefill.customerId,
           templateKey,
+          reservationId: prefill.reservationId || undefined,
           fields: {
             buyerName: buyerName.trim(),
             buyerEmail: buyerEmail.trim(),
-            street: street.trim(),
-            city: city.trim(),
-            state: state.trim(),
-            zip: zip.trim(),
-            phone: phone.trim(),
-            price: (price.trim() || "TBD"),
-            notes: notes.trim() || null,
+            litter: litter.trim() || null,
+            puppy: puppy.trim() || null,
+            price: price.trim() || "TBD",
+            place: place.trim() || null,
+            depositMethod: depositMethod.trim() || null,
           },
         }),
       });
@@ -104,7 +104,9 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
       <div>
         <h2 className="font-serif text-lg text-[var(--brown)]">Send contract</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Pick a DocuSign template and confirm purchaser details. Name, email, address, and phone fill DocuSign tabs; puppy price is stored on the contract and email blurb (default TBD).
+          Staff fill name, email, litter, puppy, price, place paid, and deposit
+          method. Buyer address/phone are filled by the purchaser when signing
+          (prefilled from customer record only when already on file).
         </p>
       </div>
 
@@ -136,7 +138,7 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
           </select>
         </div>
         <div>
-          <label className="label">Purchaser name</label>
+          <label className="label">Buyer name</label>
           <input
             className="input"
             value={buyerName}
@@ -157,55 +159,26 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
             required
           />
         </div>
-        <div className="sm:col-span-2">
-          <label className="label">Street</label>
+        <div>
+          <label className="label">Litter</label>
           <input
             className="input"
-            value={street}
-            onChange={(e) => setStreet(e.target.value)}
-            autoComplete="street-address"
+            value={litter}
+            onChange={(e) => setLitter(e.target.value)}
+            placeholder="Litter name"
           />
         </div>
         <div>
-          <label className="label">City</label>
+          <label className="label">Puppy</label>
           <input
             className="input"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            autoComplete="address-level2"
-          />
-        </div>
-        <div>
-          <label className="label">State</label>
-          <input
-            className="input"
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-            autoComplete="address-level1"
-          />
-        </div>
-        <div>
-          <label className="label">ZIP</label>
-          <input
-            className="input"
-            value={zip}
-            onChange={(e) => setZip(e.target.value)}
-            inputMode="numeric"
-            autoComplete="postal-code"
-          />
-        </div>
-        <div>
-          <label className="label">Phone</label>
-          <input
-            className="input"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            inputMode="tel"
-            autoComplete="tel"
+            value={puppy}
+            onChange={(e) => setPuppy(e.target.value)}
+            placeholder="Puppy name"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="label">Puppy price</label>
+          <label className="label">Price</label>
           <input
             className="input"
             value={price}
@@ -213,18 +186,32 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
             placeholder="TBD"
           />
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Defaults to TBD — override with a dollar amount when known (stored on contract / email blurb).
+            Defaults to TBD — looks determine price; override with an amount when known.
           </p>
         </div>
-        <div className="sm:col-span-2">
-          <label className="label">Notes (in-app only)</label>
-          <textarea
+        <div>
+          <label className="label">Place paid / where paid</label>
+          <input
             className="input"
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Not sent into DocuSign fields"
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
+            placeholder="e.g. farm visit, Zelle"
           />
+        </div>
+        <div>
+          <label className="label">Deposit method</label>
+          <select
+            className="input"
+            value={depositMethod}
+            onChange={(e) => setDepositMethod(e.target.value)}
+          >
+            <option value="">— Select —</option>
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

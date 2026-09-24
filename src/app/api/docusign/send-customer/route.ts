@@ -68,14 +68,18 @@ export async function POST(req: Request) {
 
   const buyerName = str(fieldsIn.buyerName) || customer.name;
   const buyerEmail = str(fieldsIn.buyerEmail) || customer.email || "";
-  const street = str(fieldsIn.street) || customer.street || "";
-  const city = str(fieldsIn.city) || customer.city || "";
-  const state = str(fieldsIn.state) || customer.state || "";
-  const zip = str(fieldsIn.zip) || customer.zip || "";
-  const phone = str(fieldsIn.phone) || customer.phone || "";
-  // Free-text puppy price — typically TBD until looks determine amount
+  const litter = str(fieldsIn.litter);
+  const puppy = str(fieldsIn.puppy);
   const price = str(fieldsIn.price) || "TBD";
-  const notes = str(fieldsIn.notes) || "";
+  const place = str(fieldsIn.place);
+  const depositMethod = str(fieldsIn.depositMethod);
+
+  // Address/phone: only from customer record (buyer fills at signing if missing)
+  const street = customer.street || "";
+  const city = customer.city || "";
+  const state = customer.state || "";
+  const zip = customer.zip || "";
+  const phone = customer.phone || "";
 
   if (!buyerName) {
     return NextResponse.json({ error: "buyerName required" }, { status: 400 });
@@ -87,25 +91,32 @@ export async function POST(req: Request) {
   const addressFields: AddressFields = {
     buyerName,
     buyerEmail,
-    street,
-    city,
-    state,
-    zip,
-    phone,
+    litter: litter || null,
+    puppy: puppy || null,
     price,
-    notes: notes || null,
+    place: place || null,
+    depositMethod: depositMethod || null,
+    // Only include address pieces that exist on the customer
+    ...(street ? { street } : {}),
+    ...(city ? { city } : {}),
+    ...(state ? { state } : {}),
+    ...(zip ? { zip } : {}),
+    ...(phone ? { phone } : {}),
   };
 
   const templateFields = {
     buyerName,
     buyerEmail,
-    street,
-    city,
-    state,
-    zip,
-    phone,
+    litter: litter || null,
+    puppy: puppy || null,
     price,
-    notes: notes || null,
+    place: place || null,
+    depositMethod: depositMethod || null,
+    street: street || null,
+    city: city || null,
+    state: state || null,
+    zip: zip || null,
+    phone: phone || null,
     templateKey,
   };
 
@@ -133,6 +144,10 @@ export async function POST(req: Request) {
       templateKey,
       templateId: template.templateId,
       price,
+      litter,
+      puppy,
+      place,
+      depositMethod,
     },
   };
 
@@ -157,7 +172,7 @@ export async function POST(req: Request) {
       status: result.ok ? "SENT" : "DRAFT",
       depositAmount: 0,
       totalAmount: 0,
-      notes: notes || null,
+      notes: null,
       docusignEnvelopeId: result.envelopeId,
       docusignStatus: result.status,
       docusignTemplateKey: templateKey,

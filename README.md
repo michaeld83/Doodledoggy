@@ -111,16 +111,21 @@ See **Settings** in the app for the same checklist.
 
 ### Customer Send contract (prototype)
 
-On `/customers/[id]`, staff pick a template (**Goldendoodle** / **Bernedoodle**) and confirm purchaser fields only:
+On `/customers/[id]`, staff pick a template (**Goldendoodle** / **Bernedoodle**) and fill:
 
-- Name + email (required) → DocuSign Buyer role (fills FullName / EmailAddress tabs)
-- Street, city, state, ZIP, phone → Buyer `textTabs` (locked), mapped by known `tabLabel` UUIDs per template family
-- **Puppy price** — free-text, defaults to **`TBD`** (looks determine price). Stored in `Contract.templateFieldsJson` and the envelope `emailBlurb` only — **not** pushed into DocuSign tabs in this prototype
-- Notes — in-app / blurb only
+- Buyer name + email (required) → DocuSign Buyer role
+- Litter + Puppy
+- Price (free text, default **TBD**)
+- Place paid / where paid
+- Deposit method
 
-`POST /api/docusign/send-customer` uses explicit `templateKey` (not litter breed auto-map). Reservation DocuSign send still maps by litter `breedType`.
+Address/city/state/zip/phone are **not** on the staff form. If the Customer already has those fields on file they are prefilled into Buyer address `textTabs` (unlocked); otherwise those tabs are omitted so the buyer fills them when signing.
 
-Tab label maps live in `src/lib/docusign-template-tabs.ts` (keyed by family + known sandbox/export templateIds; live tabs can fall back to page/y/x position heuristic).
+`emailBlurb` + `Contract.templateFieldsJson` store name, email, litter, puppy, price, place, depositMethod (and address when present).
+
+`POST /api/docusign/send-customer` uses explicit `templateKey`. Reservation send still maps by litter `breedType`.
+
+Tab maps: `src/lib/docusign-template-tabs.ts`.
 
 
 ## Website form / GoDaddy (planned)

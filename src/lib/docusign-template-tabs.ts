@@ -21,8 +21,16 @@ export const ADDRESS_FIELD_ORDER: AddressFieldKey[] = [
 export type AddressFields = Partial<Record<AddressFieldKey, string | null | undefined>> & {
   buyerName?: string | null;
   buyerEmail?: string | null;
+  /** Litter label (staff field; emailBlurb / templateFieldsJson only) */
+  litter?: string | null;
+  /** Puppy name (staff field; emailBlurb / templateFieldsJson only) */
+  puppy?: string | null;
   /** Free-text puppy price; typically "TBD" until looks determine amount */
   price?: string | null;
+  /** Place paid / where paid */
+  place?: string | null;
+  /** Deposit payment method (CASH/VENMO/…) */
+  depositMethod?: string | null;
   notes?: string | null;
 };
 
@@ -127,26 +135,35 @@ export function buildBuyerAddressTextTabs(
   fields: AddressFields,
   options?: { locked?: boolean }
 ): { tabLabel: string; value: string; locked: string }[] {
-  const locked = options?.locked === false ? "false" : "true";
+  // Default unlocked so buyer can correct address at signing
+  const locked = options?.locked === true ? "true" : "false";
   const tabs: { tabLabel: string; value: string; locked: string }[] = [];
   for (const key of ADDRESS_FIELD_ORDER) {
     const value = String(fields[key] ?? "").trim();
-    if (!value) continue;
+    if (!value) continue; // omit empty → buyer fills at signing
     tabs.push({ tabLabel: labels[key], value, locked });
   }
   return tabs;
 }
 
+/** Contract email blurb + audit summary (staff fields + optional address). */
 export function buildAddressEmailBlurb(fields: AddressFields): string {
   const lines = [
     `Buyer: ${fields.buyerName || "—"}`,
     `Email: ${fields.buyerEmail || "—"}`,
-    `Phone: ${fields.phone || "—"}`,
-    `Address: ${[fields.street, fields.city, fields.state, fields.zip]
-      .filter((p) => String(p || "").trim())
-      .join(", ") || "—"}`,
-    `Puppy price: ${String(fields.price || "TBD").trim() || "TBD"}`,
+    `Litter: ${fields.litter || "—"}`,
+    `Puppy: ${fields.puppy || "—"}`,
+    `Price: ${String(fields.price || "TBD").trim() || "TBD"}`,
+    `Place paid: ${fields.place || "—"}`,
+    `Deposit method: ${fields.depositMethod || "—"}`,
   ];
+  const address = [fields.street, fields.city, fields.state, fields.zip]
+    .filter((p) => String(p || "").trim())
+    .join(", ");
+  if (address || fields.phone) {
+    lines.push(`Address: ${address || "—"}`);
+    lines.push(`Phone: ${fields.phone || "—"}`);
+  }
   if (fields.notes) lines.push(`Notes: ${fields.notes}`);
   return lines.join("\n");
 }

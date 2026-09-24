@@ -527,7 +527,7 @@ async function fetchBuyerTextTabs(
  * Mock path always "sends" mock and returns SENT_MOCK (includes resolved templateId).
  * Sandbox/live with credentials: JWT + real envelope create from template with status "sent".
  * Prefer explicit templateId / templateKey; fall back to breedType for reservation sends.
- * Optional addressFields fill Buyer street/city/state/zip/phone textTabs (locked).
+ * Optional addressFields prefill Buyer street/city/state/zip/phone textTabs when present (unlocked; omitted if empty).
  */
 export async function sendEnvelope(
   payload: EnvelopePayload,

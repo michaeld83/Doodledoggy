@@ -12,7 +12,10 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     where: { id: params.id },
     include: {
       reservations: {
-        include: { litter: { include: { dam: true, sire: true } } },
+        include: {
+          litter: { include: { dam: true, sire: true } },
+          puppy: true,
+        },
         orderBy: { createdAt: "desc" },
       },
       contracts: {
@@ -40,6 +43,15 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
         envelopeId: customer.contracts[0].docusignEnvelopeId,
       }
     : null;
+
+  const latestReservation = customer.reservations[0] || null;
+  const litterLabel = latestReservation
+    ? latestReservation.litter.name ||
+      `${latestReservation.litter.dam.callName} × ${latestReservation.litter.sire.callName}`
+    : "";
+  const puppyLabel = latestReservation?.puppy
+    ? latestReservation.puppy.callName || latestReservation.puppy.tempName || ""
+    : "";
 
   return (
     <div className="space-y-6">
@@ -95,11 +107,11 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           preferredTemplateKey: customer.docusignTemplateKey,
           buyerName: customer.name,
           buyerEmail: customer.email || "",
-          street: customer.street || "",
-          city: customer.city || "",
-          state: customer.state || "",
-          zip: customer.zip || "",
-          phone: customer.phone || "",
+          litter: litterLabel,
+          puppy: puppyLabel,
+          place: latestReservation?.paidWhere || "",
+          depositMethod: latestReservation?.paymentMethod || "",
+          reservationId: latestReservation?.id || null,
           lastContract,
         }}
       />
