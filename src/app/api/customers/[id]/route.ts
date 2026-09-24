@@ -48,6 +48,16 @@ export async function PUT(req: Request, { params }: Ctx) {
 export async function DELETE(_req: Request, { params }: Ctx) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await prisma.customer.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    const existing = await prisma.customer.findUnique({ where: { id: params.id } });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await prisma.customer.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: `Could not delete client: ${message.slice(0, 200)}` },
+      { status: 400 }
+    );
+  }
 }

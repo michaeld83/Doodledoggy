@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatMoney } from "@/lib/utils";
+import { DeleteCustomerButton } from "@/components/DeleteCustomerButton";
 import { CustomerContractSend } from "@/components/CustomerContractSend";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +73,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           >
             New reservation
           </Link>
+          <DeleteCustomerButton id={customer.id} name={customer.name} />
         </div>
       </div>
 
