@@ -74,6 +74,8 @@ docker compose up --build
 | `DOCUSIGN_ACCOUNT_BASE_URI` | REST API base | `https://demo.docusign.net` |
 | `DOCUSIGN_PRIVATE_KEY` | RSA PEM string (Vercel) | empty |
 | `DOCUSIGN_PRIVATE_KEY_PATH` | RSA private key file (local) | empty |
+| `DOCUSIGN_TEMPLATE_GOLDENDOODLE` | Template for Mini/Micro Golden Doodle | `cb1b6556-…6865` |
+| `DOCUSIGN_TEMPLATE_BERNEDOODLE` | Template for Mini/Micro/Munchkin Bernedoodle | `9c858314-…6bff` |
 | `APP_BASE_URL` | Public app URL (OAuth redirect base) | `https://doodledoggy.vercel.app` |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID | empty |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | empty |
@@ -96,7 +98,11 @@ docker compose up --build
 4. For Vercel, set `DOCUSIGN_PRIVATE_KEY` to the PEM text (newlines as `\n`). Locally you can use `DOCUSIGN_PRIVATE_KEY_PATH` instead.
 5. Set `DOCUSIGN_ACCOUNT_BASE_URI` (`https://demo.docusign.net` for sandbox).
 6. Grant one-time JWT consent (open the consent URL from a `CONSENT_REQUIRED` response or Settings guide).
-7. Sandbox/live mode uses Node crypto RS256 JWT + REST envelope create with status `sent`. Success always returns a real DocuSign `envelopeId`. Mock mode is unchanged.
+7. Sandbox/live mode uses Node crypto RS256 JWT + REST **template** envelope create with status `sent` (Buyer role). Success always returns a real DocuSign `envelopeId`. Mock mode reports which `templateId` would have been used.
+8. Optional overrides: `DOCUSIGN_TEMPLATE_GOLDENDOODLE` / `DOCUSIGN_TEMPLATE_BERNEDOODLE`. Mapping:
+   - **Goldendoodle** template: Mini Golden Doodle, Micro Golden Doodle
+   - **Bernedoodle** template: Mini Bernedoodle, Micro Bernedoodle, Munchkin Bernedoodle
+   - Unknown/missing `breedType` → clear error (does not send)
 
 See **Settings** in the app for the same checklist.
 

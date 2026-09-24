@@ -7,6 +7,70 @@
 import { readFileSync } from "fs";
 import { createSign, createPrivateKey } from "crypto";
 import { buildFeeLineItems, type FeeAddOns, type FeeLineItem } from "@/lib/fees";
+import { BREED_TYPES } from "@/lib/utils";
+
+/** DocuSign demo template IDs (overridable via env). */
+export const DEFAULT_TEMPLATE_GOLDENDOODLE =
+  "cb1b6556-d557-4c96-bbae-db7553996865";
+export const DEFAULT_TEMPLATE_BERNEDOODLE =
+  "9c858314-95a2-4e42-8b98-56e0b3c76bff";
+
+const GOLDENDOODLE_BREEDS = new Set<string>([
+  "Mini Golden Doodle",
+  "Micro Golden Doodle",
+]);
+const BERNEDOODLE_BREEDS = new Set<string>([
+  "Mini Bernedoodle",
+  "Micro Bernedoodle",
+  "Munchkin Bernedoodle",
+]);
+
+export type TemplateResolveOk = {
+  ok: true;
+  templateId: string;
+  breedFamily: "goldendoodle" | "bernedoodle";
+};
+export type TemplateResolveErr = { ok: false; error: string };
+export type TemplateResolveResult = TemplateResolveOk | TemplateResolveErr;
+
+/**
+ * Map litter breedType → DocuSign templateId.
+ * Unknown/missing breed returns a clear error (never a wrong template).
+ */
+export function resolveTemplateId(
+  breedType?: string | null
+): TemplateResolveResult {
+  const raw = (breedType ?? "").trim();
+  if (!raw) {
+    return {
+      ok: false,
+      error:
+        "Missing breedType — cannot select a DocuSign template. Set the litter breed type first.",
+    };
+  }
+  if (GOLDENDOODLE_BREEDS.has(raw)) {
+    return {
+      ok: true,
+      templateId:
+        process.env.DOCUSIGN_TEMPLATE_GOLDENDOODLE?.trim() ||
+        DEFAULT_TEMPLATE_GOLDENDOODLE,
+      breedFamily: "goldendoodle",
+    };
+  }
+  if (BERNEDOODLE_BREEDS.has(raw)) {
+    return {
+      ok: true,
+      templateId:
+        process.env.DOCUSIGN_TEMPLATE_BERNEDOODLE?.trim() ||
+        DEFAULT_TEMPLATE_BERNEDOODLE,
+      breedFamily: "bernedoodle",
+    };
+  }
+  return {
+    ok: false,
+    error: `Unknown breedType "${raw}" — no DocuSign template mapping. Expected one of: ${BREED_TYPES.join(", ")}`,
+  };
+}
 
 export type EnvelopePayload = {
   emailSubject: string;
@@ -311,6 +375,7 @@ export function buildReservationEnvelope(input: {
     status: "created",
     metadata: {
       litter: input.litterLabel,
+      breedType: input.breedType || "",
       deposit: String(input.depositAmount),
       total: String(total),
       feeLines: JSON.stringify(lines),
@@ -330,16 +395,63 @@ export type SendResult = {
   status: string;
   message: string;
   payload: EnvelopePayload;
+  templateId?: string | null;
+  breedFamily?: string | null;
   consentUrl?: string;
 };
 
 /**
- * Mock path always "sends" mock and returns SENT_MOCK.
- * Sandbox/live with credentials: JWT + real envelope create with status "sent".
+ * Mock path always "sends" mock and returns SENT_MOCK (includes resolved templateId).
+ * Sandbox/live with credentials: JWT + real envelope create from breed template with status "sent".
  * Never claims success without a real API envelopeId.
  */
-export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult> {
+export async function sendEnvelope(
+  payload: EnvelopePayload,
+  options?: { breedType?: string | null }
+): Promise<SendResult> {
   const cfg = getDocuSignConfig();
+  const breedType =
+    options?.breedType ?? payload.metadata?.breedType ?? null;
+  const resolved = resolveTemplateId(breedType);
+
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId: null,
+      status: "TEMPLATE_ERROR",
+      message: resolved.error,
+      payload,
+      templateId: null,
+      breedFamily: null,
+    };
+  }
+
+  const { templateId, breedFamily } = resolved;
+  const signer = payload.recipients.signers[0];
+  if (!signer?.email || !signer?.name) {
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId: null,
+      status: "VALIDATION_ERROR",
+      message: "Buyer name and email are required for DocuSign template send.",
+      payload,
+      templateId,
+      breedFamily,
+    };
+  }
+
+  // Enrich metadata for mock/audit without sending the generated .txt
+  const enrichedPayload: EnvelopePayload = {
+    ...payload,
+    metadata: {
+      ...payload.metadata,
+      breedType: String(breedType || ""),
+      templateId,
+      breedFamily,
+    },
+  };
 
   if (cfg.mode === "mock") {
     const envelopeId = `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -348,8 +460,10 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
       mode: "mock",
       envelopeId,
       status: "SENT_MOCK",
-      message: "Mock DocuSign send completed. No external API call was made.",
-      payload,
+      message: `Mock DocuSign template send completed (templateId=${templateId}, breedFamily=${breedFamily}). No external API call was made.`,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
     };
   }
 
@@ -361,8 +475,10 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
       envelopeId,
       status: "SENT_MOCK",
       message:
-        "DocuSign credentials incomplete. Envelope saved as mock only. Configure DOCUSIGN_* env vars (including DOCUSIGN_PRIVATE_KEY or DOCUSIGN_PRIVATE_KEY_PATH) to enable sandbox/live.",
-      payload,
+        `DocuSign credentials incomplete. Envelope saved as mock only (would use templateId=${templateId}). Configure DOCUSIGN_* env vars (including DOCUSIGN_PRIVATE_KEY or DOCUSIGN_PRIVATE_KEY_PATH) to enable sandbox/live.`,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
     };
   }
 
@@ -377,7 +493,9 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
         status: "CONSENT_REQUIRED",
         message:
           `DocuSign JWT consent required. Open this URL once while signed into the DocuSign account, then retry: ${url}`,
-        payload,
+        payload: enrichedPayload,
+        templateId,
+        breedFamily,
         consentUrl: url,
       };
     }
@@ -387,56 +505,25 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
       envelopeId: null,
       status: "AUTH_FAILED",
       message: `DocuSign JWT auth failed: ${token.error}`,
-      payload,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
     };
   }
 
-  // Build REST body: send immediately so DocuSign emails the signer
-  const apiBody = {
-    emailSubject: payload.emailSubject,
+  // Template-based envelope: signature-only Buyer role (no document upload)
+  const apiBody: Record<string, unknown> = {
+    templateId,
     status: "sent",
-    documents: payload.documents.map((d) => ({
-      documentBase64: d.documentBase64,
-      name: d.name,
-      fileExtension: d.fileExtension,
-      documentId: d.documentId,
-    })),
-    recipients: {
-      signers: payload.recipients.signers.map((s) => ({
-        email: s.email,
-        name: s.name,
-        recipientId: s.recipientId,
-        routingOrder: s.routingOrder,
-        tabs: {
-          signHereTabs: [
-            {
-              documentId: "1",
-              pageNumber: "1",
-              xPosition: "100",
-              yPosition: "650",
-              optional: "false",
-            },
-          ],
-          dateSignedTabs: [
-            {
-              documentId: "1",
-              pageNumber: "1",
-              xPosition: "350",
-              yPosition: "650",
-            },
-          ],
-        },
-      })),
-    },
-    customFields: {
-      textCustomFields: Object.entries(payload.metadata || {}).map(([name, value], i) => ({
-        name,
-        value: String(value).slice(0, 100),
-        show: "false",
-        required: "false",
-        fieldId: String(i + 1),
-      })),
-    },
+    emailSubject: payload.emailSubject,
+    templateRoles: [
+      {
+        roleName: "Buyer",
+        name: signer.name,
+        email: signer.email,
+        routingOrder: "1",
+      },
+    ],
   };
 
   const envelopesUrl =
@@ -472,8 +559,10 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
       mode: cfg.mode,
       envelopeId: null,
       status: "API_ERROR",
-      message: `DocuSign envelope create failed (${res.status}): ${errMsg}`,
-      payload,
+      message: `DocuSign template envelope create failed (${res.status}): ${errMsg}`,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
     };
   }
 
@@ -486,7 +575,9 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
       envelopeId: null,
       status: "API_ERROR",
       message: "DocuSign API returned success without envelopeId — treating as failure.",
-      payload,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
     };
   }
 
@@ -495,8 +586,10 @@ export async function sendEnvelope(payload: EnvelopePayload): Promise<SendResult
     mode: cfg.mode,
     envelopeId,
     status,
-    message: `DocuSign envelope created and sent (${cfg.mode}).`,
-    payload: { ...payload, status: "sent" },
+    message: `DocuSign envelope created from ${breedFamily} template and sent (${cfg.mode}).`,
+    payload: { ...enrichedPayload, status: "sent" },
+    templateId,
+    breedFamily,
   };
 }
 
@@ -510,6 +603,8 @@ export function docusignSetupGuide(): string {
     "6. Set DOCUSIGN_AUTH_SERVER=https://account-d.docusign.com (sandbox) or https://account.docusign.com (live)",
     "7. Set DOCUSIGN_ACCOUNT_BASE_URI=https://demo.docusign.net (sandbox) or your account base URI (live)",
     "8. Set DOCUSIGN_MODE=sandbox (or live). Open the consent URL once (Settings / CONSENT_REQUIRED message)",
-    "9. App uses Node crypto RS256 JWT + REST envelopes API — no SDK required",
+    "9. Set DOCUSIGN_TEMPLATE_GOLDENDOODLE / DOCUSIGN_TEMPLATE_BERNEDOODLE (optional overrides)",
+    "10. Breed mapping: Mini/Micro Golden Doodle → Goldendoodle template; Mini/Micro/Munchkin Bernedoodle → Bernedoodle template",
+    "11. App uses Node crypto RS256 JWT + REST template envelopes API — no SDK required",
   ].join("\n");
 }

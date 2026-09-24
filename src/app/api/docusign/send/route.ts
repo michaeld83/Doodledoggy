@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import {
   buildReservationEnvelope,
   sendEnvelope,
+  resolveTemplateId,
   getDocuSignConfig,
   isDocuSignConfigured,
   docusignSetupGuide,
@@ -43,13 +44,27 @@ export async function POST(req: Request) {
   const litterLabel =
     reservation.litter.name || `${reservation.litter.dam.callName} × ${reservation.litter.sire.callName}`;
   const addOns = addOnsFromReservation(reservation);
+  const breedType = reservation.litter.breedType;
+
+  const template = resolveTemplateId(breedType);
+  if (!template.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: template.error,
+        status: "TEMPLATE_ERROR",
+        breedType: breedType || null,
+      },
+      { status: 400 }
+    );
+  }
 
   const payload = buildReservationEnvelope({
     buyerName,
     buyerEmail,
     buyerPhone,
     litterLabel,
-    breedType: reservation.litter.breedType,
+    breedType,
     depositAmount: reservation.depositAmount,
     pickPosition: reservation.pickPosition,
     puppyName: reservation.puppy?.tempName,
@@ -59,7 +74,7 @@ export async function POST(req: Request) {
     addOns,
   });
 
-  const result = await sendEnvelope(payload);
+  const result = await sendEnvelope(payload, { breedType });
 
   await prisma.reservation.update({
     where: { id: reservationId },
