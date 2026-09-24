@@ -100,18 +100,20 @@ model Puppy {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  address   String? // free-form full address
-  street    String?
-  city      String?
-  state     String?
-  zip       String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  name                 String
+  email                String?
+  phone                String?
+  address              String? // free-form full address
+  street               String?
+  city                 String?
+  state                String?
+  zip                  String?
+  notes                String?
+  /// Preferred DocuSign template: goldendoodle | bernedoodle
+  docusignTemplateKey  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   reservations Reservation[]
   contracts    Contract[]
@@ -164,21 +166,26 @@ model Reservation {
 }
 
 model Contract {
-  id                 String   @id @default(cuid())
-  customerId         String
-  reservationId      String?
-  litterId           String?
-  title              String
-  status             String   @default("DRAFT") // DRAFT | SENT | SIGNED | CANCELLED
-  depositAmount      Float    @default(0)
-  feesJson           String? // JSON snapshot of fee lines + add-ons
-  totalAmount        Float    @default(0)
-  notes              String?
-  docusignEnvelopeId String?
-  docusignStatus     String?
-  sentAt             DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  customerId           String
+  reservationId        String?
+  litterId             String?
+  title                String
+  status               String   @default("DRAFT") // DRAFT | SENT | SIGNED | CANCELLED
+  depositAmount        Float    @default(0)
+  feesJson             String? // JSON snapshot of fee lines + add-ons
+  totalAmount          Float    @default(0)
+  notes                String?
+  docusignEnvelopeId   String?
+  docusignStatus       String?
+  /// goldendoodle | bernedoodle (explicit pick, not breed auto-map)
+  docusignTemplateKey  String?
+  docusignTemplateId   String?
+  /// JSON of mirrored contract field values sent to DocuSign
+  templateFieldsJson   String?
+  sentAt               DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)

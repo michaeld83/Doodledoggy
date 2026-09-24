@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatMoney } from "@/lib/utils";
+import { CustomerContractSend } from "@/components/CustomerContractSend";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,16 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
   ]
     .filter(Boolean)
     .join(" · ");
+
+  const lastContract = customer.contracts[0]
+    ? {
+        id: customer.contracts[0].id,
+        title: customer.contracts[0].title,
+        docusignStatus: customer.contracts[0].docusignStatus,
+        docusignTemplateKey: customer.contracts[0].docusignTemplateKey,
+        envelopeId: customer.contracts[0].docusignEnvelopeId,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -65,12 +76,33 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           <span className="text-[var(--muted)]">Address</span>
           <span className="text-right">{customer.address || addressBits || "—"}</span>
         </div>
+        {customer.docusignTemplateKey && (
+          <div className="flex justify-between gap-2">
+            <span className="text-[var(--muted)]">Preferred contract</span>
+            <span className="capitalize">{customer.docusignTemplateKey}</span>
+          </div>
+        )}
         {customer.notes && (
           <p className="border-t pt-2" style={{ borderColor: "var(--border)" }}>
             {customer.notes}
           </p>
         )}
       </div>
+
+      <CustomerContractSend
+        prefill={{
+          customerId: customer.id,
+          preferredTemplateKey: customer.docusignTemplateKey,
+          buyerName: customer.name,
+          buyerEmail: customer.email || "",
+          street: customer.street || "",
+          city: customer.city || "",
+          state: customer.state || "",
+          zip: customer.zip || "",
+          phone: customer.phone || "",
+          lastContract,
+        }}
+      />
 
       <section className="space-y-3">
         <h2 className="font-serif text-lg text-[var(--brown)]">Reservations</h2>
@@ -113,6 +145,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
                   <div className="text-xs text-[var(--muted)]">
                     {formatDate(c.createdAt)}
                     {c.docusignStatus ? ` · DocuSign ${c.docusignStatus}` : ""}
+                    {c.docusignTemplateKey ? ` · ${c.docusignTemplateKey}` : ""}
                   </div>
                 </div>
                 <div className="text-right">

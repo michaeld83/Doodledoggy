@@ -14,6 +14,7 @@ type Customer = {
   state?: string | null;
   zip?: string | null;
   notes?: string | null;
+  docusignTemplateKey?: string | null;
 };
 
 export function CustomerForm({ customer }: { customer?: Customer }) {
@@ -26,6 +27,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
     setLoading(true);
     setError("");
     const fd = new FormData(e.currentTarget);
+    const templateRaw = String(fd.get("docusignTemplateKey") || "").trim();
     const body = {
       name: fd.get("name"),
       email: fd.get("email") || null,
@@ -36,6 +38,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       state: fd.get("state") || null,
       zip: fd.get("zip") || null,
       notes: fd.get("notes") || null,
+      docusignTemplateKey: templateRaw || null,
     };
     const url = customer?.id ? `/api/customers/${customer.id}` : "/api/customers";
     const method = customer?.id ? "PUT" : "POST";
@@ -88,6 +91,18 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         <div>
           <label className="label">ZIP</label>
           <input name="zip" className="input" defaultValue={customer?.zip || ""} inputMode="numeric" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Preferred DocuSign template</label>
+          <select
+            name="docusignTemplateKey"
+            className="input"
+            defaultValue={customer?.docusignTemplateKey || ""}
+          >
+            <option value="">— Not set —</option>
+            <option value="goldendoodle">Goldendoodle</option>
+            <option value="bernedoodle">Bernedoodle</option>
+          </select>
         </div>
         <div className="sm:col-span-2">
           <label className="label">Notes</label>

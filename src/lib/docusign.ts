@@ -8,6 +8,16 @@ import { readFileSync } from "fs";
 import { createSign, createPrivateKey } from "crypto";
 import { buildFeeLineItems, type FeeAddOns, type FeeLineItem } from "@/lib/fees";
 import { BREED_TYPES } from "@/lib/utils";
+import {
+  type AddressFields,
+  type TemplateFamily,
+  buildAddressEmailBlurb,
+  buildBuyerAddressTextTabs,
+  familyFromTemplateId,
+  mapAddressLabelsFromLiveTabs,
+  resolveAddressTabLabels,
+  type DocuSignTextTab,
+} from "@/lib/docusign-template-tabs";
 
 /** DocuSign demo template IDs (overridable via env). */
 export const DEFAULT_TEMPLATE_GOLDENDOODLE =
@@ -69,6 +79,41 @@ export function resolveTemplateId(
   return {
     ok: false,
     error: `Unknown breedType "${raw}" — no DocuSign template mapping. Expected one of: ${BREED_TYPES.join(", ")}`,
+  };
+}
+
+export const TEMPLATE_KEYS = ["goldendoodle", "bernedoodle"] as const;
+export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
+
+/**
+ * Resolve DocuSign templateId from an explicit staff pick (goldendoodle | bernedoodle).
+ * Prefer env DOCUSIGN_TEMPLATE_*; fall back to sandbox defaults.
+ */
+export function resolveTemplateByKey(
+  key?: string | null
+): TemplateResolveResult {
+  const raw = (key ?? "").trim().toLowerCase();
+  if (raw === "goldendoodle") {
+    return {
+      ok: true,
+      templateId:
+        process.env.DOCUSIGN_TEMPLATE_GOLDENDOODLE?.trim() ||
+        DEFAULT_TEMPLATE_GOLDENDOODLE,
+      breedFamily: "goldendoodle",
+    };
+  }
+  if (raw === "bernedoodle") {
+    return {
+      ok: true,
+      templateId:
+        process.env.DOCUSIGN_TEMPLATE_BERNEDOODLE?.trim() ||
+        DEFAULT_TEMPLATE_BERNEDOODLE,
+      breedFamily: "bernedoodle",
+    };
+  }
+  return {
+    ok: false,
+    error: `Unknown templateKey "${key || ""}" — expected goldendoodle or bernedoodle.`,
   };
 }
 
@@ -398,21 +443,98 @@ export type SendResult = {
   templateId?: string | null;
   breedFamily?: string | null;
   consentUrl?: string;
+  tabsApplied?: number;
 };
+
+export type SendEnvelopeOptions = {
+  /** Reservation path: map litter breedType → template */
+  breedType?: string | null;
+  /** Explicit template UUID (highest priority when set) */
+  templateId?: string | null;
+  /** Staff pick: goldendoodle | bernedoodle */
+  templateKey?: string | null;
+  /** Purchaser address fields → Buyer textTabs (street/city/state/zip/phone only) */
+  addressFields?: AddressFields | null;
+  /** Optional email blurb override; defaults to address summary when addressFields set */
+  emailBlurb?: string | null;
+};
+
+function resolveSendTemplate(
+  options?: SendEnvelopeOptions,
+  payload?: EnvelopePayload
+): TemplateResolveResult {
+  const explicitId = options?.templateId?.trim();
+  if (explicitId) {
+    const family: TemplateFamily =
+      (options?.templateKey as TemplateFamily) ||
+      familyFromTemplateId(explicitId) ||
+      "goldendoodle";
+    // If templateKey provided, prefer its family label; else infer from known IDs
+    if (options?.templateKey) {
+      const byKey = resolveTemplateByKey(options.templateKey);
+      if (byKey.ok) {
+        return { ok: true, templateId: explicitId, breedFamily: byKey.breedFamily };
+      }
+    }
+    const inferred = familyFromTemplateId(explicitId);
+    return {
+      ok: true,
+      templateId: explicitId,
+      breedFamily: inferred || family,
+    };
+  }
+  if (options?.templateKey) {
+    return resolveTemplateByKey(options.templateKey);
+  }
+  const breedType =
+    options?.breedType ?? payload?.metadata?.breedType ?? null;
+  return resolveTemplateId(breedType);
+}
+
+async function fetchBuyerTextTabs(
+  cfg: DocuSignConfig,
+  accessToken: string,
+  templateId: string
+): Promise<DocuSignTextTab[]> {
+  try {
+    const recipientsUrl =
+      `${cfg.accountBaseUri}/restapi/v2.1/accounts/${cfg.accountId}/templates/${templateId}/recipients`;
+    const recRes = await fetch(recipientsUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!recRes.ok) return [];
+    const recJson = (await recRes.json()) as {
+      signers?: { recipientId?: string; roleName?: string }[];
+    };
+    const buyer =
+      (recJson.signers || []).find((s) => s.roleName === "Buyer") ||
+      (recJson.signers || [])[0];
+    if (!buyer?.recipientId) return [];
+    const tabsUrl =
+      `${cfg.accountBaseUri}/restapi/v2.1/accounts/${cfg.accountId}/templates/${templateId}/recipients/${buyer.recipientId}/tabs`;
+    const tabsRes = await fetch(tabsUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!tabsRes.ok) return [];
+    const tabsJson = (await tabsRes.json()) as { textTabs?: DocuSignTextTab[] };
+    return Array.isArray(tabsJson.textTabs) ? tabsJson.textTabs : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Mock path always "sends" mock and returns SENT_MOCK (includes resolved templateId).
- * Sandbox/live with credentials: JWT + real envelope create from breed template with status "sent".
- * Never claims success without a real API envelopeId.
+ * Sandbox/live with credentials: JWT + real envelope create from template with status "sent".
+ * Prefer explicit templateId / templateKey; fall back to breedType for reservation sends.
+ * Optional addressFields fill Buyer street/city/state/zip/phone textTabs (locked).
  */
 export async function sendEnvelope(
   payload: EnvelopePayload,
-  options?: { breedType?: string | null }
+  options?: SendEnvelopeOptions
 ): Promise<SendResult> {
   const cfg = getDocuSignConfig();
-  const breedType =
-    options?.breedType ?? payload.metadata?.breedType ?? null;
-  const resolved = resolveTemplateId(breedType);
+  const resolved = resolveSendTemplate(options, payload);
 
   if (!resolved.ok) {
     return {
@@ -442,28 +564,58 @@ export async function sendEnvelope(
     };
   }
 
-  // Enrich metadata for mock/audit without sending the generated .txt
+  const addressFields: AddressFields | null = options?.addressFields
+    ? {
+        ...options.addressFields,
+        buyerName: options.addressFields.buyerName || signer.name,
+        buyerEmail: options.addressFields.buyerEmail || signer.email,
+      }
+    : null;
+
+  let addressLabels = resolveAddressTabLabels({
+    family: breedFamily,
+    templateId,
+  });
+
+  const emailBlurb =
+    options?.emailBlurb?.trim() ||
+    (addressFields ? buildAddressEmailBlurb(addressFields) : "");
+
   const enrichedPayload: EnvelopePayload = {
     ...payload,
     metadata: {
       ...payload.metadata,
-      breedType: String(breedType || ""),
+      breedType: String(options?.breedType ?? payload.metadata?.breedType ?? ""),
       templateId,
       breedFamily,
+      templateKey: String(options?.templateKey || breedFamily || ""),
+      ...(addressFields
+        ? {
+            street: String(addressFields.street || ""),
+            city: String(addressFields.city || ""),
+            state: String(addressFields.state || ""),
+            zip: String(addressFields.zip || ""),
+            phone: String(addressFields.phone || ""),
+          }
+        : {}),
     },
   };
 
   if (cfg.mode === "mock") {
+    const tabs = addressLabels && addressFields
+      ? buildBuyerAddressTextTabs(addressLabels, addressFields)
+      : [];
     const envelopeId = `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     return {
       ok: true,
       mode: "mock",
       envelopeId,
       status: "SENT_MOCK",
-      message: `Mock DocuSign template send completed (templateId=${templateId}, breedFamily=${breedFamily}). No external API call was made.`,
+      message: `Mock DocuSign template send completed (templateId=${templateId}, breedFamily=${breedFamily}, tabs=${tabs.length}). No external API call was made.`,
       payload: enrichedPayload,
       templateId,
       breedFamily,
+      tabsApplied: tabs.length,
     };
   }
 
@@ -479,6 +631,7 @@ export async function sendEnvelope(
       payload: enrichedPayload,
       templateId,
       breedFamily,
+      tabsApplied: 0,
     };
   }
 
@@ -511,20 +664,36 @@ export async function sendEnvelope(
     };
   }
 
-  // Template-based envelope: signature-only Buyer role (no document upload)
+  // If no static tab map for this templateId, fetch live Buyer textTabs and map by position
+  if (addressFields && !addressLabels) {
+    const liveTabs = await fetchBuyerTextTabs(cfg, token.accessToken, templateId);
+    addressLabels = mapAddressLabelsFromLiveTabs(liveTabs);
+  }
+
+  const textTabs =
+    addressLabels && addressFields
+      ? buildBuyerAddressTextTabs(addressLabels, addressFields)
+      : [];
+
+  const buyerRole: Record<string, unknown> = {
+    roleName: "Buyer",
+    name: signer.name,
+    email: signer.email,
+    routingOrder: "1",
+  };
+  if (textTabs.length > 0) {
+    buyerRole.tabs = { textTabs };
+  }
+
   const apiBody: Record<string, unknown> = {
     templateId,
     status: "sent",
     emailSubject: payload.emailSubject,
-    templateRoles: [
-      {
-        roleName: "Buyer",
-        name: signer.name,
-        email: signer.email,
-        routingOrder: "1",
-      },
-    ],
+    templateRoles: [buyerRole],
   };
+  if (emailBlurb) {
+    apiBody.emailBlurb = emailBlurb;
+  }
 
   const envelopesUrl =
     `${cfg.accountBaseUri}/restapi/v2.1/accounts/${cfg.accountId}/envelopes`;
@@ -563,6 +732,7 @@ export async function sendEnvelope(
       payload: enrichedPayload,
       templateId,
       breedFamily,
+      tabsApplied: textTabs.length,
     };
   }
 
@@ -578,6 +748,7 @@ export async function sendEnvelope(
       payload: enrichedPayload,
       templateId,
       breedFamily,
+      tabsApplied: textTabs.length,
     };
   }
 
@@ -586,10 +757,11 @@ export async function sendEnvelope(
     mode: cfg.mode,
     envelopeId,
     status,
-    message: `DocuSign envelope created from ${breedFamily} template and sent (${cfg.mode}).`,
+    message: `DocuSign envelope created from ${breedFamily} template and sent (${cfg.mode}; address tabs=${textTabs.length}).`,
     payload: { ...enrichedPayload, status: "sent" },
     templateId,
     breedFamily,
+    tabsApplied: textTabs.length,
   };
 }
 
@@ -604,7 +776,8 @@ export function docusignSetupGuide(): string {
     "7. Set DOCUSIGN_ACCOUNT_BASE_URI=https://demo.docusign.net (sandbox) or your account base URI (live)",
     "8. Set DOCUSIGN_MODE=sandbox (or live). Open the consent URL once (Settings / CONSENT_REQUIRED message)",
     "9. Set DOCUSIGN_TEMPLATE_GOLDENDOODLE / DOCUSIGN_TEMPLATE_BERNEDOODLE (optional overrides)",
-    "10. Breed mapping: Mini/Micro Golden Doodle → Goldendoodle template; Mini/Micro/Munchkin Bernedoodle → Bernedoodle template",
-    "11. App uses Node crypto RS256 JWT + REST template envelopes API — no SDK required",
+    "10. Reservation sends map litter breedType → template; customer Send contract uses explicit templateKey",
+    "11. Customer send fills Buyer address textTabs only (street/city/state/zip/phone) + role name/email",
+    "12. App uses Node crypto RS256 JWT + REST template envelopes API — no SDK required",
   ].join("\n");
 }

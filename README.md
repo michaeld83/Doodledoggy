@@ -107,6 +107,22 @@ docker compose up --build
 See **Settings** in the app for the same checklist.
 
 
+
+
+### Customer Send contract (prototype)
+
+On `/customers/[id]`, staff pick a template (**Goldendoodle** / **Bernedoodle**) and confirm purchaser fields only:
+
+- Name + email (required) → DocuSign Buyer role (fills FullName / EmailAddress tabs)
+- Street, city, state, ZIP, phone → Buyer `textTabs` (locked), mapped by known `tabLabel` UUIDs per template family
+- **Puppy price** — free-text, defaults to **`TBD`** (looks determine price). Stored in `Contract.templateFieldsJson` and the envelope `emailBlurb` only — **not** pushed into DocuSign tabs in this prototype
+- Notes — in-app / blurb only
+
+`POST /api/docusign/send-customer` uses explicit `templateKey` (not litter breed auto-map). Reservation DocuSign send still maps by litter `breedType`.
+
+Tab label maps live in `src/lib/docusign-template-tabs.ts` (keyed by family + known sandbox/export templateIds; live tabs can fall back to page/y/x position heuristic).
+
+
 ## Website form / GoDaddy (planned)
 
 Website contact forms and GoDaddy lead email are **not connected yet** (no live URL or form inbox). When ready, point the form (or a Zapier/Make bridge) at:

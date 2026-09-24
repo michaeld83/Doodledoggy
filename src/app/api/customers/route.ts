@@ -41,6 +41,9 @@ export async function POST(req: Request) {
       state: body.state ? String(body.state).trim() : null,
       zip: body.zip ? String(body.zip).trim() : null,
       notes: body.notes ? String(body.notes).trim() : null,
+      docusignTemplateKey: body.docusignTemplateKey
+        ? String(body.docusignTemplateKey).trim().toLowerCase()
+        : null,
     },
   });
   return NextResponse.json(customer);

@@ -96,3 +96,9 @@ WHERE EXISTS (
   WHERE "Reservation"."puppyId" = "Puppy"."id"
     AND ("Reservation"."travelBag" = 1 OR "Reservation"."travelArrangements" = 1)
 );
+
+-- Customer preferred DocuSign template + Contract field audit
+ALTER TABLE "Customer" ADD COLUMN "docusignTemplateKey" TEXT;
+ALTER TABLE "Contract" ADD COLUMN "docusignTemplateKey" TEXT;
+ALTER TABLE "Contract" ADD COLUMN "docusignTemplateId" TEXT;
+ALTER TABLE "Contract" ADD COLUMN "templateFieldsJson" TEXT;

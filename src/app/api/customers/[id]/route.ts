@@ -34,6 +34,12 @@ export async function PUT(req: Request, { params }: Ctx) {
       state: body.state !== undefined ? (body.state ? String(body.state).trim() : null) : undefined,
       zip: body.zip !== undefined ? (body.zip ? String(body.zip).trim() : null) : undefined,
       notes: body.notes !== undefined ? (body.notes ? String(body.notes).trim() : null) : undefined,
+      docusignTemplateKey:
+        body.docusignTemplateKey !== undefined
+          ? body.docusignTemplateKey
+            ? String(body.docusignTemplateKey).trim().toLowerCase()
+            : null
+          : undefined,
     },
   });
   return NextResponse.json(customer);
