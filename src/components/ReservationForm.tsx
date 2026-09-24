@@ -221,16 +221,19 @@ export function ReservationForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reservationId: id }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
     setSendingDs(false);
-    if (!res.ok) {
-      setError(data.error || "DocuSign failed");
-      router.push(`/reservations/${id}`);
-      return;
-    }
-    setMessage(data.message || "DocuSign processed");
-    router.push(`/reservations/${id}`);
+    const ok = res.ok && Boolean(data.ok);
+    const text = String(
+      data.message || data.error || (ok ? "DocuSign processed" : `DocuSign failed (HTTP ${res.status})`)
+    ).slice(0, 600);
+    if (ok) setMessage(text);
+    else setError(text);
+    // Carry the result to the reservation page; otherwise navigation drops it
+    // and a failed send looks like nothing happened.
+    const qs = new URLSearchParams({ ds: text, dsOk: ok ? "1" : "0" });
+    router.push(`/reservations/${id}?${qs.toString()}`);
     router.refresh();
   }
 

@@ -5,6 +5,7 @@ import {
   buildReservationEnvelope,
   sendEnvelope,
   resolveTemplateId,
+  resolveTemplateByKey,
   getDocuSignConfig,
   isDocuSignConfigured,
   docusignSetupGuide,
@@ -46,7 +47,10 @@ export async function POST(req: Request) {
   const addOns = addOnsFromReservation(reservation);
   const breedType = reservation.litter.breedType;
 
-  const template = resolveTemplateId(breedType);
+  const templateKey = String(body.templateKey || "").trim().toLowerCase();
+  const template = templateKey
+    ? resolveTemplateByKey(templateKey)
+    : resolveTemplateId(breedType);
   if (!template.ok) {
     return NextResponse.json(
       {
@@ -54,6 +58,7 @@ export async function POST(req: Request) {
         error: template.error,
         status: "TEMPLATE_ERROR",
         breedType: breedType || null,
+        needsTemplateKey: true,
       },
       { status: 400 }
     );
@@ -76,6 +81,7 @@ export async function POST(req: Request) {
 
   const result = await sendEnvelope(payload, {
     breedType,
+    ...(templateKey ? { templateKey, templateId: template.templateId } : {}),
     prefillFields: {
       litter: litterLabel,
       puppy: reservation.puppy?.tempName || null,

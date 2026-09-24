@@ -49,7 +49,17 @@ export async function POST(req: Request) {
   }
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  if (!customer) {
+    return NextResponse.json(
+      {
+        ok: false,
+        status: "CUSTOMER_NOT_FOUND",
+        error:
+          "This customer record no longer exists (it was deleted). Nothing was sent. Open Customers, pick the current client, and send from there.",
+      },
+      { status: 404 }
+    );
+  }
 
   let litterId: string | null = null;
   if (reservationId) {

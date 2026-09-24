@@ -106,9 +106,11 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
       setMsg(
         data.message ||
           data.error ||
-          (res.ok ? "Sent" : "Send failed")
+          (res.ok ? "Sent" : `Send failed (HTTP ${res.status})`)
       );
-      router.refresh();
+      // Only refresh on success: refreshing after a 404 (deleted customer)
+      // replaces this page with Not Found and hides the error message.
+      if (res.ok) router.refresh();
     } catch (e) {
       setOk(false);
       setMsg(e instanceof Error ? e.message : "Send failed");

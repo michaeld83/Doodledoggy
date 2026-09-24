@@ -8,7 +8,15 @@ import { addOnsFromReservation, buildFeeLineItems } from "@/lib/fees";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReservationDetailPage({ params }: { params: { id: string } }) {
+export default async function ReservationDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { ds?: string; dsOk?: string };
+}) {
+  const dsMsg = typeof searchParams?.ds === "string" ? searchParams.ds.slice(0, 600) : "";
+  const dsOk = searchParams?.dsOk === "1";
   const r = await prisma.reservation.findUnique({
     where: { id: params.id },
     include: {
@@ -40,6 +48,15 @@ export default async function ReservationDetailPage({ params }: { params: { id: 
           Edit
         </Link>
       </div>
+
+      {dsMsg && (
+        <div
+          className={`card text-sm whitespace-pre-wrap ${dsOk ? "text-[var(--brown-soft)]" : "border border-red-300 text-red-700"}`}
+        >
+          <strong>{dsOk ? "DocuSign: " : "DocuSign send failed: "}</strong>
+          {dsMsg}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card space-y-2 text-sm">
@@ -138,7 +155,7 @@ export default async function ReservationDetailPage({ params }: { params: { id: 
               <dd className="max-w-[12rem] truncate">{r.docusignEnvelopeId || "—"}</dd>
             </div>
           </dl>
-          <DocuSignButton reservationId={r.id} />
+          <DocuSignButton reservationId={r.id} hasBreedType={Boolean(r.litter.breedType)} />
         </div>
 
         <div className="card space-y-3">

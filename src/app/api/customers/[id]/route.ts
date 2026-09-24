@@ -51,7 +51,17 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   try {
     const existing = await prisma.customer.findUnique({ where: { id: params.id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await prisma.customer.delete({ where: { id: params.id } });
+    // Prod Turso tables were created without some FK constraints (e.g.
+    // Reservation.customerId, Puppy.customerId), so onDelete SetNull/Cascade in
+    // schema.prisma is not enforced there. Do it explicitly so no reservation or
+    // puppy keeps pointing at a deleted customer (stale links → 404 on Send contract).
+    await prisma.$transaction([
+      prisma.reservation.updateMany({ where: { customerId: params.id }, data: { customerId: null } }),
+      prisma.puppy.updateMany({ where: { customerId: params.id }, data: { customerId: null } }),
+      prisma.payment.deleteMany({ where: { customerId: params.id } }),
+      prisma.contract.deleteMany({ where: { customerId: params.id } }),
+      prisma.customer.delete({ where: { id: params.id } }),
+    ]);
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
