@@ -165,6 +165,14 @@ export async function POST(req: Request) {
     templateId: template.templateId,
     addressFields,
     emailBlurb,
+    prefillFields: {
+      litter: litter || null,
+      puppy: puppy || null,
+      price,
+      place: place || null,
+      depositMethod: depositMethod || null,
+      depositAmount,
+    },
   });
 
   await prisma.customer.update({

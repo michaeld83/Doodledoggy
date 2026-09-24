@@ -18,6 +18,12 @@ import {
   resolveAddressTabLabels,
   type DocuSignTextTab,
 } from "@/lib/docusign-template-tabs";
+import {
+  type PrefillStaffFields,
+  mapPrefillTabsForPut,
+  resolvePrefillTabLabels,
+  type EnvelopePrefillTextTab,
+} from "@/lib/docusign-prefill-tabs";
 
 /** DocuSign demo template IDs (overridable via env). */
 export const DEFAULT_TEMPLATE_GOLDENDOODLE =
@@ -444,6 +450,7 @@ export type SendResult = {
   breedFamily?: string | null;
   consentUrl?: string;
   tabsApplied?: number;
+  prefillTabsApplied?: number;
 };
 
 export type SendEnvelopeOptions = {
@@ -457,6 +464,11 @@ export type SendEnvelopeOptions = {
   addressFields?: AddressFields | null;
   /** Optional email blurb override; defaults to address summary when addressFields set */
   emailBlurb?: string | null;
+  /**
+   * Staff sender-fill fields → document prefillTabs (litter/puppy, place, price, deposit).
+   * Falls back to matching keys on addressFields / payload.metadata when omitted.
+   */
+  prefillFields?: PrefillStaffFields | null;
 };
 
 function resolveSendTemplate(
@@ -525,9 +537,9 @@ async function fetchBuyerTextTabs(
 
 /**
  * Mock path always "sends" mock and returns SENT_MOCK (includes resolved templateId).
- * Sandbox/live with credentials: JWT + real envelope create from template with status "sent".
+ * Sandbox/live: create envelope status=created → fill document prefillTabs by envelope
+ * tabId → PUT status=sent. Buyer address textTabs optional on create.
  * Prefer explicit templateId / templateKey; fall back to breedType for reservation sends.
- * Optional addressFields prefill Buyer street/city/state/zip/phone textTabs when present (unlocked; omitted if empty).
  */
 export async function sendEnvelope(
   payload: EnvelopePayload,
@@ -572,6 +584,39 @@ export async function sendEnvelope(
       }
     : null;
 
+  const prefillFields: PrefillStaffFields = {
+    litter:
+      options?.prefillFields?.litter ??
+      addressFields?.litter ??
+      payload.metadata?.litter ??
+      null,
+    puppy:
+      options?.prefillFields?.puppy ??
+      addressFields?.puppy ??
+      payload.metadata?.puppy ??
+      null,
+    price:
+      options?.prefillFields?.price ??
+      addressFields?.price ??
+      payload.metadata?.price ??
+      "TBD",
+    place:
+      options?.prefillFields?.place ??
+      addressFields?.place ??
+      payload.metadata?.place ??
+      null,
+    depositMethod:
+      options?.prefillFields?.depositMethod ??
+      addressFields?.depositMethod ??
+      payload.metadata?.depositMethod ??
+      null,
+    depositAmount:
+      options?.prefillFields?.depositAmount ??
+      addressFields?.depositAmount ??
+      payload.metadata?.depositAmount ??
+      null,
+  };
+
   let addressLabels = resolveAddressTabLabels({
     family: breedFamily,
     templateId,
@@ -589,6 +634,12 @@ export async function sendEnvelope(
       templateId,
       breedFamily,
       templateKey: String(options?.templateKey || breedFamily || ""),
+      litter: String(prefillFields.litter || ""),
+      puppy: String(prefillFields.puppy || ""),
+      price: String(prefillFields.price || "TBD"),
+      place: String(prefillFields.place || ""),
+      depositMethod: String(prefillFields.depositMethod || ""),
+      depositAmount: String(prefillFields.depositAmount ?? ""),
       ...(addressFields
         ? {
             street: String(addressFields.street || ""),
@@ -611,11 +662,12 @@ export async function sendEnvelope(
       mode: "mock",
       envelopeId,
       status: "SENT_MOCK",
-      message: `Mock DocuSign template send completed (templateId=${templateId}, breedFamily=${breedFamily}, tabs=${tabs.length}). No external API call was made.`,
+      message: `Mock DocuSign template send completed (templateId=${templateId}, breedFamily=${breedFamily}, tabs=${tabs.length}, prefill=4). No external API call was made.`,
       payload: enrichedPayload,
       templateId,
       breedFamily,
       tabsApplied: tabs.length,
+      prefillTabsApplied: 4,
     };
   }
 
@@ -632,6 +684,7 @@ export async function sendEnvelope(
       templateId,
       breedFamily,
       tabsApplied: 0,
+      prefillTabsApplied: 0,
     };
   }
 
@@ -687,7 +740,7 @@ export async function sendEnvelope(
 
   const apiBody: Record<string, unknown> = {
     templateId,
-    status: "sent",
+    status: "created",
     emailSubject: payload.emailSubject,
     templateRoles: [buyerRole],
   };
@@ -695,15 +748,16 @@ export async function sendEnvelope(
     apiBody.emailBlurb = emailBlurb;
   }
 
+  const authHeaders = {
+    Authorization: `Bearer ${token.accessToken}`,
+    "Content-Type": "application/json",
+  };
   const envelopesUrl =
     `${cfg.accountBaseUri}/restapi/v2.1/accounts/${cfg.accountId}/envelopes`;
 
   const res = await fetch(envelopesUrl, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token.accessToken}`,
-      "Content-Type": "application/json",
-    },
+    headers: authHeaders,
     body: JSON.stringify(apiBody),
   });
 
@@ -733,11 +787,11 @@ export async function sendEnvelope(
       templateId,
       breedFamily,
       tabsApplied: textTabs.length,
+      prefillTabsApplied: 0,
     };
   }
 
   const envelopeId = String(json.envelopeId || "");
-  const status = String(json.status || "sent");
   if (!envelopeId) {
     return {
       ok: false,
@@ -749,19 +803,227 @@ export async function sendEnvelope(
       templateId,
       breedFamily,
       tabsApplied: textTabs.length,
+      prefillTabsApplied: 0,
     };
   }
 
+  const voidDraft = async () => {
+    try {
+      await fetch(`${envelopesUrl}/${envelopeId}`, {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({
+          status: "voided",
+          voidedReason: "Prefill or send failed; discarding draft",
+        }),
+      });
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  // GET documents → pick first non-summary documentId
+  const docsRes = await fetch(`${envelopesUrl}/${envelopeId}/documents`, {
+    headers: { Authorization: `Bearer ${token.accessToken}` },
+  });
+  const docsRaw = await docsRes.text();
+  let docsJson: {
+    envelopeDocuments?: { documentId?: string; name?: string; type?: string }[];
+  } = {};
+  try {
+    docsJson = JSON.parse(docsRaw) as typeof docsJson;
+  } catch {
+    /* keep */
+  }
+  if (!docsRes.ok) {
+    await voidDraft();
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId,
+      status: "API_ERROR",
+      message: `DocuSign list documents failed (${docsRes.status}): ${docsRaw.slice(0, 400)}`,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
+      tabsApplied: textTabs.length,
+      prefillTabsApplied: 0,
+    };
+  }
+
+  const doc =
+    (docsJson.envelopeDocuments || []).find(
+      (d) =>
+        d.documentId &&
+        d.documentId !== "certificate" &&
+        String(d.type || "").toLowerCase() !== "summary"
+    ) || (docsJson.envelopeDocuments || [])[0];
+  const documentId = String(doc?.documentId || "");
+  if (!documentId) {
+    await voidDraft();
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId,
+      status: "API_ERROR",
+      message: "DocuSign envelope has no documentId for prefill tabs.",
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
+      tabsApplied: textTabs.length,
+      prefillTabsApplied: 0,
+    };
+  }
+
+  // GET envelope document tabs → use envelope tabIds (not template tabLabels alone)
+  const tabsUrl = `${envelopesUrl}/${envelopeId}/documents/${documentId}/tabs`;
+  const tabsGetRes = await fetch(tabsUrl, {
+    headers: { Authorization: `Bearer ${token.accessToken}` },
+  });
+  const tabsGetRaw = await tabsGetRes.text();
+  let tabsGetJson: {
+    prefillTabs?: { textTabs?: EnvelopePrefillTextTab[] };
+  } = {};
+  try {
+    tabsGetJson = JSON.parse(tabsGetRaw) as typeof tabsGetJson;
+  } catch {
+    /* keep */
+  }
+  if (!tabsGetRes.ok) {
+    await voidDraft();
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId,
+      status: "API_ERROR",
+      message: `DocuSign get document tabs failed (${tabsGetRes.status}): ${tabsGetRaw.slice(0, 400)}`,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
+      tabsApplied: textTabs.length,
+      prefillTabsApplied: 0,
+    };
+  }
+
+  const envelopePrefillTabs: EnvelopePrefillTextTab[] = Array.isArray(
+    tabsGetJson.prefillTabs?.textTabs
+  )
+    ? tabsGetJson.prefillTabs!.textTabs!
+    : [];
+
+  const knownPrefillLabels = resolvePrefillTabLabels({
+    family: breedFamily,
+    templateId,
+  });
+  const prefillPutTabs = mapPrefillTabsForPut(
+    envelopePrefillTabs,
+    prefillFields,
+    knownPrefillLabels
+  );
+
+  if (prefillPutTabs.length === 0 && envelopePrefillTabs.some(
+    (t) => t.required === true || String(t.required).toLowerCase() === "true"
+  )) {
+    await voidDraft();
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId,
+      status: "PREFILL_INCOMPLETE",
+      message:
+        "Could not map required DocuSign prefill tabs (litter/puppy, place, price, deposit method). Check template tab layout.",
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
+      tabsApplied: textTabs.length,
+      prefillTabsApplied: 0,
+    };
+  }
+
+  if (prefillPutTabs.length > 0) {
+    const putRes = await fetch(tabsUrl, {
+      method: "PUT",
+      headers: authHeaders,
+      body: JSON.stringify({ prefillTabs: { textTabs: prefillPutTabs } }),
+    });
+    const putRaw = await putRes.text();
+    if (!putRes.ok) {
+      let putJson: Record<string, unknown> = {};
+      try {
+        putJson = JSON.parse(putRaw) as Record<string, unknown>;
+      } catch {
+        /* keep */
+      }
+      const errMsg = String(
+        putJson.message || putJson.errorCode || putRaw || putRes.statusText
+      ).slice(0, 800);
+      await voidDraft();
+      return {
+        ok: false,
+        mode: cfg.mode,
+        envelopeId,
+        status: "PREFILL_ERROR",
+        message: `DocuSign prefill tabs update failed (${putRes.status}): ${errMsg}`,
+        payload: enrichedPayload,
+        templateId,
+        breedFamily,
+        tabsApplied: textTabs.length,
+        prefillTabsApplied: 0,
+      };
+    }
+  }
+
+  // Send the draft envelope
+  const sendRes = await fetch(`${envelopesUrl}/${envelopeId}`, {
+    method: "PUT",
+    headers: authHeaders,
+    body: JSON.stringify({ status: "sent" }),
+  });
+  const sendRaw = await sendRes.text();
+  let sendJson: Record<string, unknown> = {};
+  try {
+    sendJson = JSON.parse(sendRaw) as Record<string, unknown>;
+  } catch {
+    /* keep */
+  }
+
+  if (!sendRes.ok) {
+    const errCode = String(sendJson.errorCode || "");
+    const errMsg = String(
+      sendJson.message || errCode || sendRaw || sendRes.statusText
+    ).slice(0, 800);
+    await voidDraft();
+    const friendly =
+      /REQUIRED_TAB_INCOMPLETE/i.test(errCode) ||
+      /REQUIRED_TAB_INCOMPLETE/i.test(errMsg)
+        ? " Required contract fields (litter/puppy, place, price, deposit method) were incomplete after prefill."
+        : "";
+    return {
+      ok: false,
+      mode: cfg.mode,
+      envelopeId,
+      status: errCode || "SEND_ERROR",
+      message: `DocuSign send failed (${sendRes.status}): ${errMsg}.${friendly}`,
+      payload: enrichedPayload,
+      templateId,
+      breedFamily,
+      tabsApplied: textTabs.length,
+      prefillTabsApplied: prefillPutTabs.length,
+    };
+  }
+
+  const status = String(sendJson.status || "sent");
   return {
     ok: true,
     mode: cfg.mode,
     envelopeId,
     status,
-    message: `DocuSign envelope created from ${breedFamily} template and sent (${cfg.mode}; address tabs=${textTabs.length}).`,
+    message: `DocuSign envelope created from ${breedFamily} template and sent (${cfg.mode}; address tabs=${textTabs.length}, prefill tabs=${prefillPutTabs.length}).`,
     payload: { ...enrichedPayload, status: "sent" },
     templateId,
     breedFamily,
     tabsApplied: textTabs.length,
+    prefillTabsApplied: prefillPutTabs.length,
   };
 }
 
@@ -777,7 +1039,8 @@ export function docusignSetupGuide(): string {
     "8. Set DOCUSIGN_MODE=sandbox (or live). Open the consent URL once (Settings / CONSENT_REQUIRED message)",
     "9. Set DOCUSIGN_TEMPLATE_GOLDENDOODLE / DOCUSIGN_TEMPLATE_BERNEDOODLE (optional overrides)",
     "10. Reservation sends map litter breedType → template; customer Send contract uses explicit templateKey",
-    "11. Customer send fills Buyer address textTabs only (street/city/state/zip/phone) + role name/email",
-    "12. App uses Node crypto RS256 JWT + REST template envelopes API — no SDK required",
+    "11. Create status=created → PUT document prefillTabs by envelope tabId → status=sent",
+    "12. Prefill: litter/puppy, place, price, deposit method (+ amount); Buyer address tabs optional",
+    "13. App uses Node crypto RS256 JWT + REST template envelopes API — no SDK required",
   ].join("\n");
 }

@@ -74,7 +74,17 @@ export async function POST(req: Request) {
     addOns,
   });
 
-  const result = await sendEnvelope(payload, { breedType });
+  const result = await sendEnvelope(payload, {
+    breedType,
+    prefillFields: {
+      litter: litterLabel,
+      puppy: reservation.puppy?.tempName || null,
+      price: "TBD",
+      place: reservation.paidWhere || null,
+      depositMethod: reservation.paymentMethod || null,
+      depositAmount: reservation.depositAmount,
+    },
+  });
 
   await prisma.reservation.update({
     where: { id: reservationId },
