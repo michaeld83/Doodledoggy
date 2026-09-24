@@ -12,7 +12,7 @@ Built for exactly **2 users** (no public signup). Soft kennel-friendly UI with d
 - **Litters & puppies** — dam/sire, whelp/expected dates, notes; puppies with temp name, sex, color, status, pick position
 - **Deposits / DocuSign** — reservations with payment tracking; mock path + live JWT sandbox/production envelope send
 - **Health/vet files** — notes + uploads on disk; timeline on dog page
-- **Auth** — simple login; 2 seeded users
+- **Auth** — email/password + Sign in with Google (allowlisted emails); 2 seeded local users
 - **Dashboard** — active dogs, upcoming litters, open reservations, health follow-ups, new inquiries
 - **Inquiries** — webhook-ready contact leads (GoDaddy/form planned); staff list + status
 
@@ -74,6 +74,19 @@ docker compose up --build
 | `DOCUSIGN_ACCOUNT_BASE_URI` | REST API base | `https://demo.docusign.net` |
 | `DOCUSIGN_PRIVATE_KEY` | RSA PEM string (Vercel) | empty |
 | `DOCUSIGN_PRIVATE_KEY_PATH` | RSA private key file (local) | empty |
+| `APP_BASE_URL` | Public app URL (OAuth redirect base) | `https://doodledoggy.vercel.app` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | empty |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | empty |
+| `GOOGLE_ALLOWED_EMAILS` | Comma-separated allowlist | kennel Gmail pair |
+
+## Sign in with Google
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) create an OAuth 2.0 **Web** client.
+2. Add authorized redirect URIs (exact match):
+   - `https://doodledoggy.vercel.app/api/auth/google/callback`
+   - `http://localhost:3000/api/auth/google/callback` (local dev)
+3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_BASE_URL`, and optionally `GOOGLE_ALLOWED_EMAILS` in Vercel / `.env`.
+4. Only allowlisted emails can complete login; first Google login upserts a `User` (random unusable `passwordHash`). Local email/password login remains available.
 
 ## DocuSign setup (JWT)
 
