@@ -43,7 +43,7 @@ export default async function ReservationsPage() {
               </div>
               <div className="mt-2 flex justify-between text-sm">
                 <span>{formatMoney(r.feesTotal ?? r.depositAmount)}</span>
-                <span className="text-xs text-[var(--muted)]">{r.docusignStatus || "No DocuSign"}</span>
+                <span className="text-xs text-[var(--muted)]">{r.docusignStatus || "Not sent"}</span>
               </div>
             </Link>
           );
@@ -60,7 +60,7 @@ export default async function ReservationsPage() {
               <th>Pick</th>
               <th>Total</th>
               <th>Paid</th>
-              <th>DocuSign</th>
+              <th>E-sign</th>
               <th>Status</th>
             </tr>
           </thead>

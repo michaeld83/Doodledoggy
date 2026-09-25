@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PAYMENT_METHODS, formatMoney } from "@/lib/utils";
+import type { EsignConnection } from "@/lib/esign/types";
+import { canSendTemplate } from "@/lib/esign/types";
+import { EsignNotice } from "@/components/EsignNotice";
 
 export type ContractPrefill = {
   customerId: string;
@@ -39,7 +42,13 @@ function depositPrefillString(v: number | null | undefined): string {
   return String(v);
 }
 
-export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) {
+export function CustomerContractSend({
+  prefill,
+  esign,
+}: {
+  prefill: ContractPrefill;
+  esign: EsignConnection;
+}) {
   const router = useRouter();
   const initialKey =
     prefill.preferredTemplateKey === "bernedoodle" ||
@@ -71,8 +80,14 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
     () => Boolean(buyerName.trim() && buyerEmail.trim() && templateKey),
     [buyerName, buyerEmail, templateKey]
   );
+  const gate = canSendTemplate(esign, templateKey);
 
   async function send() {
+    if (!gate.ok) {
+      setOk(false);
+      setMsg(gate.reason);
+      return;
+    }
     if (!canSend) {
       setOk(false);
       setMsg("Buyer name, email, and template are required.");
@@ -86,7 +101,7 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
         depositAmount.trim() === ""
           ? 0
           : Number(depositAmount.replace(/[$,]/g, ""));
-      const res = await fetch("/api/docusign/send-customer", {
+      const res = await fetch(esign.sendCustomerEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,7 +162,7 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
         <p className="text-sm text-[var(--brown-soft)]">
           Last: {prefill.lastContract.title}
           {prefill.lastContract.docusignStatus
-            ? ` · DocuSign ${prefill.lastContract.docusignStatus}`
+            ? ` · e-sign ${prefill.lastContract.docusignStatus}`
             : ""}
           {prefill.lastContract.docusignTemplateKey
             ? ` · ${prefill.lastContract.docusignTemplateKey}`
@@ -271,14 +286,16 @@ export function CustomerContractSend({ prefill }: { prefill: ContractPrefill }) 
         </div>
       </div>
 
+      {!gate.ok && <EsignNotice esign={esign} reason={gate.reason} />}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           className="btn-primary"
           onClick={send}
-          disabled={loading || !canSend}
+          disabled={loading || !canSend || !gate.ok}
+          title={!gate.ok ? gate.reason : undefined}
         >
-          {loading ? "Sending…" : "Send contract"}
+          {loading ? "Sending…" : `Send contract (${esign.label})`}
         </button>
       </div>
       {msg && (

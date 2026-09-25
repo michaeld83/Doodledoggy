@@ -1,4 +1,9 @@
 /**
+ * LEGACY: DocuSign, inactive on the `signwell` branch (used only when
+ * ESIGN_PROVIDER=docusign). Kept intact for rollback — see
+ * src/lib/esign/legacy-docusign/README.md. Active provider: src/lib/esign/signwell.ts.
+ */
+/**
  * DocuSign JWT grant + envelope create/send.
  * Mock mode never hits the API. Sandbox/live require credentials + RSA key
  * and return real envelopeId from DocuSign — never a fake success.

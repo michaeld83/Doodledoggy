@@ -16,7 +16,7 @@ export default async function ContractsPage() {
       <div>
         <h1 className="page-title">Customer contracts</h1>
         <p className="text-sm text-[var(--muted)]">
-          {contracts.length} contracts — created from paid-client / DocuSign flow
+          {contracts.length} contracts — created from paid-client / e-sign flow
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export default async function ContractsPage() {
               <th>Customer</th>
               <th>Litter</th>
               <th>Total</th>
-              <th>DocuSign</th>
+              <th>E-sign</th>
               <th>Status</th>
               <th>Created</th>
             </tr>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ReservationForm } from "@/components/ReservationForm";
+import { getEsignConnection } from "@/lib/esign";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +30,11 @@ export default async function NewReservationPage({
         </Link>
         <h1 className="page-title mt-1">Paid client form</h1>
         <p className="text-sm text-[var(--muted)]">
-          Capture deposit, add-ons, and send to DocuSign as a customer contract.
+          Capture deposit, add-ons, and send the contract for e-signature.
         </p>
       </div>
       <ReservationForm
+        esign={getEsignConnection()}
         initialLitterId={searchParams.litterId}
         customers={customers.map((c) => ({
           id: c.id,

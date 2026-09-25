@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { EsignConnection } from "@/lib/esign/types";
+import { canSendTemplate } from "@/lib/esign/types";
 import { useEffect, useMemo, useState } from "react";
 import { PAYMENT_METHODS, formatMoney } from "@/lib/utils";
 import {
@@ -65,14 +67,20 @@ export function ReservationForm({
   customers: initialCustomers,
   initialLitterId,
   initial,
+  esign,
 }: {
   litters: LitterOpt[];
   customers: CustomerOpt[];
   initialLitterId?: string;
   initial?: InitialReservation;
+  /** Active e-sign provider state; Send button disabled when not connected. */
+  esign?: EsignConnection;
 }) {
   const router = useRouter();
   const isEdit = Boolean(initial?.id);
+  const esignGate = esign
+    ? canSendTemplate(esign, null)
+    : { ok: false, reason: "E-sign status unavailable." };
   const [litterId, setLitterId] = useState(initial?.litterId || initialLitterId || litters[0]?.id || "");
   const [customers, setCustomers] = useState(initialCustomers);
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(
@@ -210,13 +218,13 @@ export function ReservationForm({
       return;
     }
     if (!buyerEmail.trim()) {
-      setError("Email required to send DocuSign");
+      setError("Email required to send the contract");
       setLoading(false);
       setSendingDs(false);
       router.push(`/reservations/${id}`);
       return;
     }
-    const res = await fetch("/api/docusign/send", {
+    const res = await fetch(esign?.sendReservationEndpoint || "/api/esign/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reservationId: id }),
@@ -226,7 +234,7 @@ export function ReservationForm({
     setSendingDs(false);
     const ok = res.ok && Boolean(data.ok);
     const text = String(
-      data.message || data.error || (ok ? "DocuSign processed" : `DocuSign failed (HTTP ${res.status})`)
+      data.message || data.error || (ok ? "Contract sent" : `Contract send failed (HTTP ${res.status})`)
     ).slice(0, 600);
     if (ok) setMessage(text);
     else setError(text);
@@ -242,7 +250,7 @@ export function ReservationForm({
       <div>
         <h2 className="font-serif text-lg text-[var(--brown)]">Paid client / reservation</h2>
         <p className="text-sm text-[var(--muted)]">
-          Phone-friendly deposit form with add-ons. Save, or send to DocuSign as a customer contract.
+          Phone-friendly deposit form with add-ons. Save, or send the contract for e-signature.
         </p>
       </div>
 
@@ -585,12 +593,16 @@ export function ReservationForm({
         <button
           type="button"
           className="btn-primary"
-          disabled={loading}
+          disabled={loading || !esignGate.ok}
+          title={!esignGate.ok ? esignGate.reason : undefined}
           onClick={onSaveAndDocuSign}
         >
-          {sendingDs ? "Sending to DocuSign…" : "Send to DocuSign"}
+          {sendingDs ? "Sending contract…" : `Save + send contract${esign ? ` (${esign.label})` : ""}`}
         </button>
       </div>
+      {!esignGate.ok && (
+        <p className="text-sm text-[var(--muted)]">{esignGate.reason}</p>
+      )}
     </form>
   );
 }

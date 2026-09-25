@@ -1,4 +1,9 @@
 /**
+ * LEGACY: DocuSign, inactive on the `signwell` branch (used only when
+ * ESIGN_PROVIDER=docusign). Kept intact for rollback — see
+ * src/lib/esign/legacy-docusign/README.md. Active provider: src/lib/esign/signwell.ts.
+ */
+/**
  * Document prefillTabs (sender-fill) for puppy contract templates.
  *
  * REQUIRED_TAB_INCOMPLETE on send: templates have required empty prefill

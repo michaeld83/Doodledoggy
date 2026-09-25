@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/StatusBadge";
-import { DocuSignButton } from "@/components/DocuSignButton";
+import { ContractSendButton } from "@/components/ContractSendButton";
+import { EsignDocumentActions } from "@/components/EsignDocumentActions";
+import { getEsignConnection } from "@/lib/esign";
 import { formatDate, formatMoney } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +19,7 @@ export default async function ContractDetailPage({ params }: { params: { id: str
     },
   });
   if (!contract) notFound();
+  const esign = getEsignConnection();
 
   let feeLines: { label: string; amount: number; notes?: string | null }[] = [];
   try {
@@ -109,22 +112,25 @@ export default async function ContractDetailPage({ params }: { params: { id: str
       </div>
 
       <div className="card space-y-3">
-        <h2 className="font-serif text-lg text-[var(--brown)]">DocuSign</h2>
+        <h2 className="font-serif text-lg text-[var(--brown)]">E-signature ({esign.label})</h2>
         <dl className="space-y-1 text-sm">
           <div className="flex justify-between">
             <dt className="text-[var(--muted)]">Status</dt>
             <dd>{contract.docusignStatus || "Not sent"}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-[var(--muted)]">Envelope ID</dt>
+            <dt className="text-[var(--muted)]">Document ID</dt>
             <dd className="max-w-[12rem] truncate">{contract.docusignEnvelopeId || "—"}</dd>
           </div>
         </dl>
+        {esign.provider === "signwell" && contract.docusignEnvelopeId && (
+          <EsignDocumentActions documentId={contract.docusignEnvelopeId} connected={esign.connected} />
+        )}
         {contract.reservationId ? (
-          <DocuSignButton reservationId={contract.reservationId} />
+          <ContractSendButton reservationId={contract.reservationId} esign={esign} />
         ) : (
           <p className="text-sm text-[var(--muted)]">
-            Link a reservation to enable DocuSign send from this contract.
+            Link a reservation to send this contract for e-signature (or use Send contract on the customer page).
           </p>
         )}
       </div>

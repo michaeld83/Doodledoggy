@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/StatusBadge";
-import { DocuSignButton } from "@/components/DocuSignButton";
+import { ContractSendButton } from "@/components/ContractSendButton";
+import { EsignDocumentActions } from "@/components/EsignDocumentActions";
+import { getEsignConnection } from "@/lib/esign";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { addOnsFromReservation, buildFeeLineItems } from "@/lib/fees";
 
@@ -27,6 +29,7 @@ export default async function ReservationDetailPage({
     },
   });
   if (!r) notFound();
+  const esign = getEsignConnection();
 
   const displayName = r.customer?.name || r.buyerName || "Reservation";
   const lines = buildFeeLineItems(r.depositAmount, addOnsFromReservation(r));
@@ -53,7 +56,7 @@ export default async function ReservationDetailPage({
         <div
           className={`card text-sm whitespace-pre-wrap ${dsOk ? "text-[var(--brown-soft)]" : "border border-red-300 text-red-700"}`}
         >
-          <strong>{dsOk ? "DocuSign: " : "DocuSign send failed: "}</strong>
+          <strong>{dsOk ? "Contract: " : "Contract send failed: "}</strong>
           {dsMsg}
         </div>
       )}
@@ -139,11 +142,10 @@ export default async function ReservationDetailPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card space-y-3">
-          <h2 className="font-serif text-lg text-[var(--brown)]">DocuSign</h2>
+          <h2 className="font-serif text-lg text-[var(--brown)]">E-signature ({esign.label})</h2>
           <p className="text-sm text-[var(--muted)]">
-            Builds a reservation agreement with all fee lines. Mock mode never calls DocuSign.
-            Sandbox/live with credentials sends a real DocuSign envelope; mock mode does not call the API. Never fakes
-            successful live sends.
+            Sends the {esign.label} contract template with litter/puppy, pick # (Place), price, and deposit
+            method filled in.
           </p>
           <dl className="space-y-1 text-sm">
             <div className="flex justify-between">
@@ -151,18 +153,21 @@ export default async function ReservationDetailPage({
               <dd>{r.docusignStatus || "Not sent"}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-[var(--muted)]">Envelope ID</dt>
+              <dt className="text-[var(--muted)]">Document ID</dt>
               <dd className="max-w-[12rem] truncate">{r.docusignEnvelopeId || "—"}</dd>
             </div>
           </dl>
-          <DocuSignButton reservationId={r.id} hasBreedType={Boolean(r.litter.breedType)} />
+          {esign.provider === "signwell" && r.docusignEnvelopeId && (
+            <EsignDocumentActions documentId={r.docusignEnvelopeId} connected={esign.connected} />
+          )}
+          <ContractSendButton reservationId={r.id} hasBreedType={Boolean(r.litter.breedType)} esign={esign} />
         </div>
 
         <div className="card space-y-3">
           <h2 className="font-serif text-lg text-[var(--brown)]">Contracts</h2>
           {r.contracts.length === 0 && (
             <p className="text-sm text-[var(--muted)]">
-              No contract yet — Save + DocuSign from the form creates one when a customer is linked.
+              No contract yet — sending a contract creates one when a customer is linked.
             </p>
           )}
           <ul className="space-y-2 text-sm">

@@ -93,7 +93,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
           <input name="zip" className="input" defaultValue={customer?.zip || ""} inputMode="numeric" />
         </div>
         <div className="sm:col-span-2">
-          <label className="label">Preferred DocuSign template</label>
+          <label className="label">Preferred contract template</label>
           <select
             name="docusignTemplateKey"
             className="input"

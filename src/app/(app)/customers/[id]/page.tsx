@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { DeleteCustomerButton } from "@/components/DeleteCustomerButton";
 import { CustomerContractSend } from "@/components/CustomerContractSend";
+import { getEsignConnection } from "@/lib/esign";
 import { CustomerPayments } from "@/components/CustomerPayments";
 
 export const dynamic = "force-dynamic";
@@ -118,6 +119,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       </div>
 
       <CustomerContractSend
+        esign={getEsignConnection()}
         prefill={{
           customerId: customer.id,
           preferredTemplateKey: customer.docusignTemplateKey,
@@ -177,7 +179,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
                   <div className="font-medium">{c.title}</div>
                   <div className="text-xs text-[var(--muted)]">
                     {formatDate(c.createdAt)}
-                    {c.docusignStatus ? ` · DocuSign ${c.docusignStatus}` : ""}
+                    {c.docusignStatus ? ` · e-sign ${c.docusignStatus}` : ""}
                     {c.docusignTemplateKey ? ` · ${c.docusignTemplateKey}` : ""}
                   </div>
                 </div>

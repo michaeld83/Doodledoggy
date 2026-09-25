@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ReservationForm } from "@/components/ReservationForm";
+import { getEsignConnection } from "@/lib/esign";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function EditReservationPage({ params }: { params: { id: st
         <h1 className="page-title mt-1">Edit paid client form</h1>
       </div>
       <ReservationForm
+        esign={getEsignConnection()}
         customers={customers.map((c) => ({
           id: c.id,
           name: c.name,

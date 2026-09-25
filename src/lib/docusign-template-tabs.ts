@@ -1,4 +1,9 @@
 /**
+ * LEGACY: DocuSign, inactive on the `signwell` branch (used only when
+ * ESIGN_PROVIDER=docusign). Kept intact for rollback — see
+ * src/lib/esign/legacy-docusign/README.md. Active provider: src/lib/esign/signwell.ts.
+ */
+/**
  * DocuSign Buyer-role address textTabs for puppy contract templates.
  *
  * Layout (signature page): STREET (widest) → CITY → STATE → ZIP, then PHONE below.
