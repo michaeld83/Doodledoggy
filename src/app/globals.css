@@ -21,6 +21,10 @@
   --border: #ddd2c0;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   color: var(--ink);
   background: var(--cream);
@@ -29,7 +33,7 @@ body {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition shadow-sm;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition shadow-sm;
   }
   .btn-primary {
     @apply btn text-white;
@@ -63,7 +67,8 @@ body {
     border-color: var(--border);
   }
   .input {
-    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition;
+    /* 16px on phones so iOS Safari doesn't zoom on focus; 44px tap target */
+    @apply min-h-[44px] w-full max-w-full rounded-lg border px-3 py-2 text-base outline-none transition sm:text-sm;
     border-color: var(--border);
     background: white;
   }
@@ -141,4 +146,42 @@ body {
 }
 .ped-node.female {
   border-left: 3px solid #c98a9a;
+}
+
+/* ---------- Mobile helpers ---------- */
+/* Sticky primary actions at the bottom of long forms on phones (sits above the bottom tab bar). */
+.sticky-actions {
+  @apply sticky z-20 flex gap-2 border-t py-3 sm:static sm:border-0 sm:p-0;
+  bottom: calc(4rem + env(safe-area-inset-bottom));
+  background: rgba(250, 247, 242, 0.96);
+  border-color: var(--border);
+}
+@media (min-width: 768px) {
+  .sticky-actions {
+    position: static;
+    background: transparent;
+  }
+}
+.sticky-actions > .btn,
+.sticky-actions > .btn-primary,
+.sticky-actions > .btn-secondary {
+  @apply flex-1 sm:flex-none;
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* Long words/emails/URLs never push the page wider than the screen */
+main {
+  overflow-wrap: anywhere;
+}
+textarea.input {
+  min-height: 5rem;
+}
+@media (max-width: 639px) {
+  .card {
+    @apply p-4;
+  }
+  .page-title {
+    @apply text-xl;
+  }
 }

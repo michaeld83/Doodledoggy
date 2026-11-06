@@ -31,11 +31,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-[100dvh] items-center justify-center px-4 py-6">
       <div className="card w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <Image src="/branding/state-emblem.svg" alt="" width={72} height={72} />
-          <Image src="/branding/mini-golden-doodles.svg" alt="Mini Golden Doodles Georgia" width={220} height={80} />
+          <div className="flex items-center justify-center gap-3">
+            <Image
+              src="/branding/snuggly-doodles.png"
+              alt="Snuggly Doodles"
+              width={80}
+              height={80}
+              className="h-20 w-20 rounded-full object-cover"
+              priority
+            />
+            <Image
+              src="/branding/mini-goldendoodles-georgia.png"
+              alt="Mini Goldendoodles of Georgia"
+              width={160}
+              height={93}
+              className="h-20 w-auto object-contain"
+              priority
+            />
+          </div>
           <h1 className="page-title text-center">Kennel Login</h1>
           <p className="text-center text-sm text-[var(--muted)]">Private access — no public signup</p>
         </div>
@@ -59,13 +75,14 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input className="input" type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div>
             <label className="label">Password</label>
             <input
               className="input"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

@@ -110,7 +110,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         </div>
       </div>
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-      <div className="flex gap-2">
+      <div className="sticky-actions">
         <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? "Saving…" : "Save customer"}
         </button>

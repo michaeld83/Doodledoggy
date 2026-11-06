@@ -58,7 +58,29 @@ export default async function DogsPage({
         <button type="submit" className="btn-secondary">Filter</button>
       </form>
 
-      <div className="table-wrap bg-white">
+      <div className="grid gap-3 sm:hidden">
+        {dogs.map((d) => (
+          <Link key={d.id} href={`/dogs/${d.id}`} className="card block active:bg-[var(--cream-dark)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-medium text-[var(--brown)]">{d.callName}</div>
+                {d.registeredName && (
+                  <div className="truncate text-sm text-[var(--muted)]">{d.registeredName}</div>
+                )}
+              </div>
+              <StatusBadge status={d.status} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[var(--brown-soft)]">
+              <span>{d.sex === "MALE" ? "♂ Male" : "♀ Female"}</span>
+              <span>{d.breed}</span>
+              <span>{formatDate(d.dateOfBirth)}</span>
+            </div>
+          </Link>
+        ))}
+        {dogs.length === 0 && <p className="card text-center text-[var(--muted)]">No dogs found</p>}
+      </div>
+
+      <div className="table-wrap hidden bg-white sm:block">
         <table className="data">
           <thead>
             <tr>
